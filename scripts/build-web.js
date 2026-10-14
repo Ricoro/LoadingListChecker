@@ -11,6 +11,7 @@ async function build() {
   html = html.replace('default-src \'self\'; script-src \'self\'; style-src \'self\'', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'");
   html = html.replace('VESSEL OPERATIONS', 'VESSEL OPERATIONS · BROWSER APP');
   html = html.replace('</header>', '<section class="portal-intro"><p>Use this page independently on any PC with a modern browser. Your files are read locally and are not uploaded or saved on a server. Closing or refreshing the page clears the current comparison.</p></section></header>');
+  html = html.replace('<button id="export-marked">Save marked Excel</button>', '<button id="export-marked">Save marked Excel</button><button id="email-marked" title="Download an Outlook email draft with the marked Excel attached">mail</button>');
   html = html.replace('<script src="renderer.js"></script>', `<script src="${path.basename(script)}"></script>`);
   await fs.writeFile(path.join(output, 'index.html'), html);
   await fs.writeFile(path.join(output, 'style.css'), (await fs.readFile('src/style.css', 'utf8')) + '\n.portal-intro{margin-top:22px;padding:16px 20px;background:#edf4f6;border:1px solid #d3e2e8;border-radius:10px}.portal-intro p{margin:0 0 12px}\n');

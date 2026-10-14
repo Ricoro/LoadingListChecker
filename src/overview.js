@@ -1,5 +1,7 @@
 const { normalize, extract } = require('./compare');
-function overview(sheet, selection, quayRows, quayColumn) {
+const { blockedContainers } = require('./terminal');
+function overview(sheet, selection, quayRows, quayColumn, blockedColumn = 4) {
+  const blocked = blockedContainers(quayRows, quayColumn, blockedColumn);
   const terminal = extract(quayRows, quayColumn).containers;
   const headers = sheet.rows[selection.start - 2] || [];
   const find = regex => headers.findIndex(value => regex.test(String(value).trim()));
@@ -9,7 +11,7 @@ function overview(sheet, selection, quayRows, quayColumn) {
     const container = normalize(values[selection.column]);
     const valid = /^[A-Z]{4}\d{7}$/.test(container);
     if (!valid && !(booking >= 0 && String(values[booking] || '').trim())) return;
-    rows.push({ sourceRow: selection.start + offset, container, booking: values[booking] || '', size: values[size] || '', type: values[type] || '', status: valid ? (terminal.has(container) ? 'Delivered' : 'Outstanding') : 'No containernumber' });
+    rows.push({ sourceRow: selection.start + offset, container, booking: values[booking] || '', size: values[size] || '', type: values[type] || '', status: valid ? (blocked.has(container) ? 'Blocked' : terminal.has(container) ? 'Delivered' : 'Outstanding') : 'No containernumber' });
   });
   const vesselLine = sheet.rows.slice(0, selection.start - 1).find(row => row.some(value => /^M\/V\s/i.test(String(value))));
   const declaredMatch = sheet.rows.flat().map(String).join(' ').match(/TOTAL\s+units\s*:\s*(\d+)/i);

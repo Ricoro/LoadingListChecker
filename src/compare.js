@@ -13,10 +13,11 @@ function extract(rows, column) {
   }
   return { containers, duplicates, invalid, blank };
 }
-function compare(vesselRows, vesselColumn, quayRows, quayColumn) {
+function compare(vesselRows, vesselColumn, quayRows, quayColumn, blockedColumn = 4) {
+  const blocked = require('./terminal').blockedContainers(quayRows, quayColumn, blockedColumn);
   const vessel = extract(vesselRows, vesselColumn), quay = extract(quayRows, quayColumn);
-  const results = [...vessel.containers].sort().map(container => ({ container, status: quay.containers.has(container) ? 'Delivered' : 'Outstanding' }));
+  const results = [...vessel.containers].sort().map(container => ({ container, status: blocked.has(container) ? 'Blocked' : quay.containers.has(container) ? 'Delivered' : 'Outstanding' }));
   const quayOnly = [...quay.containers].filter(id => !vessel.containers.has(id)).sort();
-  return { results, quayOnly, vessel: { ...vessel, containers: vessel.containers.size }, quay: { ...quay, containers: quay.containers.size } };
+  return { blockedCount: results.filter(row => row.status === 'Blocked').length, results, quayOnly, vessel: { ...vessel, containers: vessel.containers.size }, quay: { ...quay, containers: quay.containers.size } };
 }
 module.exports = { normalize, extract, compare };

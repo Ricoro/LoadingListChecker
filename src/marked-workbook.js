@@ -2,10 +2,10 @@ const ExcelJS = require('exceljs');
 const { overview } = require('./overview');
 const excludedHeaders = new Set(['sealno', 'pol', 'pod', 'blno', 'status', 'weight', 'tare', 'gross', 'imo', 'oceanvessel', 'oceancarrier', 'oceanblno', 'stock', 'forwardervatno', 'skkkfk']);
 const normalizeHeader = value => String(value ?? '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
-function markedWorkbook(vesselSheet, selection, quayRows, quayColumn) {
+function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedColumn = 4) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Marked loading list');
-  const statuses = new Map(overview(vesselSheet, selection, quayRows, quayColumn).loadingRows.map(row => [row.sourceRow, row.status]));
+  const statuses = new Map(overview(vesselSheet, selection, quayRows, quayColumn, blockedColumn).loadingRows.map(row => [row.sourceRow, row.status]));
   const sourceWidth = vesselSheet.rows.reduce((max, row) => Math.max(max, row.length), 0);
   const headers = vesselSheet.rows[selection.start - 2] || [];
   const keptColumns = Array.from({ length: sourceWidth }, (_, index) => index).filter(index => {
@@ -20,7 +20,8 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn) {
     const status = statuses.get(index + 1);
     if (!status) return;
     row.getCell(width + 1).value = status;
-    const color = status === 'Delivered' ? 'FFDDF1E4' : status === 'Outstanding' ? 'FFFFEDD3' : 'FFE8EBEF';
+    if (status === 'Blocked') row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    const color = status === 'Blocked' ? 'FF8B1E2D' : status === 'Delivered' ? 'FFDDF1E4' : status === 'Outstanding' ? 'FFFFEDD3' : 'FFE8EBEF';
     for (let col = 1; col <= width + 1; col++) row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
   });
   sheet.columns.forEach(column => { column.width = 18; });

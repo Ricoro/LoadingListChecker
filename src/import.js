@@ -37,5 +37,5 @@ async function readList(file) {
     return { name: sheet.name, rows };
   });
 }
-const { suggestSelection } = require('./selection');
-module.exports = { readList, suggestSelection };
+const { suggestSelection, suggestBlockedColumn } = require('./selection');
+module.exports = { readList, suggestSelection, suggestBlockedColumn };

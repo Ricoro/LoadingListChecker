@@ -2,9 +2,16 @@ const XLS = require('@e965/xlsx');
 const { parse } = require('csv-parse/browser/esm/sync');
 const { compare } = require('../src/compare');
 const { overview } = require('../src/overview');
-const { suggestSelection } = require('../src/selection');
+const { suggestSelection, suggestBlockedColumn } = require('../src/selection');
 const { markedWorkbook } = require('../src/marked-workbook');
+const { createEmailDraft } = require('../src/email-draft');
 const imports = new Map();
+function downloadFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a'); link.href = url; link.download = filename;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 function chooseFile() {
   return new Promise(resolve => {
     const input = document.createElement('input');
@@ -33,7 +40,7 @@ async function readBrowserFile(file) {
 function selected(selections, side) {
   const selection = selections?.[side], sheet = imports.get(side)?.[selection?.sheet];
   if (!sheet || !Number.isInteger(selection.column) || selection.column < 0 || !Number.isInteger(selection.start) || selection.start < 1) throw new Error('Import both lists and choose their columns and first data rows.');
-  return { sheet, selection, rows: sheet.rows.slice(selection.start - 1), column: selection.column };
+  return { sheet, selection, rows: sheet.rows.slice(selection.start - 1), column: selection.column, blockedColumn: selection.blockedColumn ?? suggestBlockedColumn(sheet.rows) };
 }
 window.checker = {
   async import(side) {
@@ -42,19 +49,24 @@ window.checker = {
     if (!file) return null;
     const name = file.name, sheets = await readBrowserFile(file);
     imports.set(side, sheets);
-    return { name, sheets: sheets.map(sheet => ({ name: sheet.name, count: sheet.rows.length, suggested: suggestSelection(sheet.rows, side), preview: sheet.rows.slice(0, 20), columns: sheet.rows.reduce((width, row) => Math.max(width, row.length), 0) })) };
+    return { name, sheets: sheets.map(sheet => ({ name: sheet.name, count: sheet.rows.length, suggested: suggestSelection(sheet.rows, side), suggestedBlockedColumn: suggestBlockedColumn(sheet.rows), preview: sheet.rows.slice(0, 20), columns: sheet.rows.reduce((width, row) => Math.max(width, row.length), 0) })) };
   },
   async compare(selections) {
     const v = selected(selections, 'vessel'), q = selected(selections, 'quay');
-    return { ...compare(v.rows, v.column, q.rows, q.column), ...overview(v.sheet, v.selection, q.rows, q.column) };
+    return { ...compare(v.rows, v.column, q.rows, q.column, q.blockedColumn), ...overview(v.sheet, v.selection, q.rows, q.column, q.blockedColumn) };
   },
   async exportMarked(selections) {
     const v = selected(selections, 'vessel'), q = selected(selections, 'quay');
-    const buffer = await markedWorkbook(v.sheet, v.selection, q.rows, q.column).xlsx.writeBuffer();
-    const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'marked-loading-list.xlsx';
-    document.body.append(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    const buffer = await markedWorkbook(v.sheet, v.selection, q.rows, q.column, q.blockedColumn).xlsx.writeBuffer();
+    downloadFile(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'marked-loading-list.xlsx');
+    return true;
+  },
+  async emailMarked(selections) {
+    const v = selected(selections, 'vessel'), q = selected(selections, 'quay');
+    const data = await this.compare(selections);
+    const bytes = await markedWorkbook(v.sheet, v.selection, q.rows, q.column, q.blockedColumn).xlsx.writeBuffer();
+    const eml = createEmailDraft({ workbookBytes: bytes, vesselName: data.vesselName, summary: { ...data, onTerminal: data.results.filter(row => ['Delivered','Blocked'].includes(row.status)).length, outstanding: data.results.filter(row => row.status === 'Outstanding').length } });
+    downloadFile(new Blob([eml], { type: 'message/rfc822' }), 'loading-list-mail.eml');
     return true;
   }
 };

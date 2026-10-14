@@ -9,4 +9,11 @@ function suggestSelection(rows, side) {
   const first = rows.findIndex(row => /^[A-Z]{4}\d{7}$/.test(String(row[column] || '').replace(/[\s-]/g, '').toUpperCase()));
   return { column, start: first >= 0 ? first + 1 : 2 };
 }
-module.exports = { suggestSelection };
+function suggestBlockedColumn(rows) {
+  for (const row of rows.slice(0, 30)) {
+    const column = row.findIndex(value => /^blocked$/i.test(String(value).trim()));
+    if (column >= 0) return column;
+  }
+  return -1;
+}
+module.exports = { suggestSelection, suggestBlockedColumn };

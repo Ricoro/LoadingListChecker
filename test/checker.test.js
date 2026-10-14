@@ -9,6 +9,36 @@ const { readList } = require('../src/import');
 const { suggestSelection } = require('../src/import');
 const { overview } = require('../src/overview');
 const { markedWorkbook } = require('../src/marked-workbook');
+test('blocked terminal containers override delivered and mark all split-bill rows deep red', async () => {
+  const vessel = { rows: [['Cont. No','Booking No'],['MSCU1234567','BOOK1'],['MSCU1234567','BOOK1'],['ABCD7654321','BOOK2'],['','BOOK3']] };
+  const quay = [['Containers','Container','MSCU1234567','',' no '],['Containers','Container','mscu-1234567','',' YES '],['Containers','Container','ABCD7654321','','No']];
+  const data = compare(vessel.rows.slice(1),0,quay,2,4);
+  assert.equal(data.blockedCount,1);
+  assert.equal(data.results.find(row=>row.container==='MSCU1234567').status,'Blocked');
+  assert.equal(data.results.find(row=>row.container==='ABCD7654321').status,'Delivered');
+  assert.equal(compare(vessel.rows.slice(1),0,quay,2,-1).blockedCount,0);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await markedWorkbook(vessel,{column:0,start:2},quay,2,4).xlsx.writeBuffer());
+  for (const number of [2,3]) {
+    assert.equal(workbook.worksheets[0].getCell(`C${number}`).value,'Blocked');
+    assert.equal(workbook.worksheets[0].getCell(`A${number}`).fill.fgColor.argb,'FF8B1E2D');
+    assert.equal(workbook.worksheets[0].getCell(`A${number}`).font.color.argb,'FFFFFFFF');
+  }
+  assert.equal(workbook.worksheets[0].getCell('C4').value,'Delivered');
+});
+test('mail draft contains a valid marked Excel attachment and cannot inject headers', async () => {
+  const { createEmailDraft } = require('../src/email-draft');
+  const bytes = await markedWorkbook({rows:[['Cont. No','Booking No'],['MSCU1234567','BOOK1']]},{column:0,start:2},[['MSCU1234567']],0,-1).xlsx.writeBuffer();
+  const eml = createEmailDraft({workbookBytes:bytes,vesselName:'Vessel Å\r\nBcc: unwanted@example.test',summary:{bookedTotal:1}});
+  assert.ok(eml.startsWith('X-Unsent: 1\r\n'));
+  assert.ok(!eml.includes('\r\nBcc:'));
+  assert.match(eml,/filename="marked-loading-list.xlsx"/);
+  const attachment = eml.split('Content-Disposition: attachment; filename="marked-loading-list.xlsx"')[1].split('\r\n\r\n')[1].split('\r\n\r\n')[0];
+  const decoded = Buffer.from(attachment.replace(/\r\n/g,''),'base64');
+  assert.deepEqual(decoded,bytes);
+  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(decoded);
+  assert.equal(workbook.worksheets[0].getCell('C2').value,'Delivered');
+});
 test('marked Excel removes unnecessary source columns while retaining aligned values and delivery status', async () => {
   const removed=['Seal No','POL','POD','BL NO','Status','Weight (ton)','Tare','Gross','IMO','Ocean Vessel','Ocean carrier','OCean BL No','Stock','Forwarder VAT NO','SKK/KFK'];
   const headers=['Cont. No','Booking No',...removed,'Client','Terminal status'];

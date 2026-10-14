@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
-const { readList, suggestSelection } = require('./import');
+const { readList, suggestSelection, suggestBlockedColumn } = require('./import');
 const { overview } = require('./overview');
 const { markedWorkbook } = require('./marked-workbook');
 const { compare } = require('./compare');
@@ -26,7 +26,7 @@ ipcMain.handle('import', async (_, side) => {
   if (stat.size > 25 * 1024 * 1024) throw new Error('Please choose a file smaller than 25 MB.');
   const sheets = await readList(file);
   imports.set(side, sheets);
-  return { name: path.basename(file), sheets: sheets.map(s => ({ suggested: suggestSelection(s.rows, side), name: s.name, count: s.rows.length, preview: s.rows.slice(0, 20), columns: Math.max(0, ...s.rows.slice(0, 20).map(r => r.length)) })) };
+  return { name: path.basename(file), sheets: sheets.map(s => ({ suggested: suggestSelection(s.rows, side), suggestedBlockedColumn: suggestBlockedColumn(s.rows), name: s.name, count: s.rows.length, preview: s.rows.slice(0, 20), columns: Math.max(0, ...s.rows.slice(0, 20).map(r => r.length)) })) };
 });
 function compareSelections(selections) {
   function selected(side) {
@@ -34,10 +34,10 @@ function compareSelections(selections) {
     if (!selection) throw new Error('Import both lists first.');
     const sheet = imports.get(side)?.[selection.sheet];
     if (!sheet || !Number.isInteger(selection.column) || selection.column < 0 || !Number.isInteger(selection.start) || selection.start < 1) throw new Error('Import both lists and choose their columns and first data rows.');
-    return { rows: sheet.rows.slice(selection.start - 1), column: selection.column };
+    return { rows: sheet.rows.slice(selection.start - 1), column: selection.column, blockedColumn: selection.blockedColumn ?? suggestBlockedColumn(sheet.rows) };
   }
   const vessel = selected('vessel'), quay = selected('quay');
-  return { ...compare(vessel.rows, vessel.column, quay.rows, quay.column), ...overview(imports.get('vessel')[selections.vessel.sheet], selections.vessel, quay.rows, quay.column) };
+  return { ...compare(vessel.rows, vessel.column, quay.rows, quay.column, quay.blockedColumn), ...overview(imports.get('vessel')[selections.vessel.sheet], selections.vessel, quay.rows, quay.column, quay.blockedColumn) };
 }
 ipcMain.handle('compare', (_, selections) => compareSelections(selections));
 ipcMain.handle('export-marked', async (_, selections) => {
@@ -45,7 +45,7 @@ ipcMain.handle('export-marked', async (_, selections) => {
   const chosen = await dialog.showSaveDialog(window, { defaultPath: 'marked-loading-list.xlsx', filters: [{ name: 'Excel', extensions: ['xlsx'] }] });
   if (chosen.canceled) return false;
   const q = selections.quay;
-  const workbook = markedWorkbook(imports.get('vessel')[selections.vessel.sheet], selections.vessel, imports.get('quay')[q.sheet].rows.slice(q.start - 1), q.column);
+  const workbook = markedWorkbook(imports.get('vessel')[selections.vessel.sheet], selections.vessel, imports.get('quay')[q.sheet].rows.slice(q.start - 1), q.column, q.blockedColumn ?? suggestBlockedColumn(imports.get('quay')[q.sheet].rows));
   await workbook.xlsx.writeFile(chosen.filePath);
   return true;
 });

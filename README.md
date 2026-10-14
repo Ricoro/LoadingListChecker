@@ -1,67 +1,106 @@
-# Loading List Checker
+const state = { vessel: null, quay: null, result: null };
+const $ = id => document.getElementById(id);
+function element(tag, text) { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; }
+function invalidate() { state.result = null; $('results').hidden = true; $('compare').disabled = !(state.vessel && state.quay); $('message').textContent = ''; }
+function selections() {
+  return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet').value), column: Number($(side+'-column').value), start: Number($(side+'-start').value), ...(side === 'quay' ? { blockedColumn: Number($('quay-blocked').value) } : {}) }]));
+}
+function configure(side) {
+  const data = state[side], host = $(side).querySelector('.configuration');
+  host.replaceChildren(); host.hidden = false;
+  host.append(element('div', data.name)); host.firstChild.className = 'filename';
+  const sheetLabel = element('label', 'Worksheet'); const sheets = element('select'); sheets.id = side+'-sheet';
+  data.sheets.forEach((s,i) => { const option = element('option', `${s.name} (${s.count} rows)`); option.value = i; sheets.append(option); });
+  sheetLabel.append(sheets); host.append(sheetLabel);
+  const columnLabel = element('label','Container-number column'); const columns = element('select'); columns.id = side+'-column'; columnLabel.append(columns); host.append(columnLabel);
+  let blocked;
+  if (side === 'quay') { const label = element('label', 'Blocked column'); blocked = element('select'); blocked.id = 'quay-blocked'; label.append(blocked); host.append(label); blocked.addEventListener('change', invalidate); }
+  const startLabel = element('label','First data row'); const start = element('input'); start.type = 'number'; start.min = '1'; start.value = '2'; start.id = side+'-start'; startLabel.append(start); host.append(startLabel);
+  const preview = element('div'); preview.className = 'preview'; host.append(preview);
+  function populate() {
+    const sheet = data.sheets[Number(sheets.value)]; columns.replaceChildren();
+    const first = sheet.preview[0] || [];
+    for (let i=0;i<sheet.columns;i++) { const option = element('option', `Column ${i+1}${first[i] ? ' — '+first[i] : ''}`); option.value = i; columns.append(option); }
+    if (blocked) { blocked.replaceChildren(); const none = element('option', 'No blocked column'); none.value = '-1'; blocked.append(none); for (let i=0;i<sheet.columns;i++) { const option = element('option', `Column ${i+1}${first[i] ? ' — '+first[i] : ''}`); option.value = i; blocked.append(option); } blocked.value = String(sheet.suggestedBlockedColumn ?? -1); }
+    const guessed = first.findIndex(v => /container|cntr|unit\s*(no|number)/i.test(String(v)));
+    columns.value = String(sheet.suggested?.column ?? Math.max(0,guessed));
+    start.value = first.some(v => /^[A-Za-z]{4}[\s-]*\d{7}$/.test(String(v).trim())) ? '1' : '2';
+    if (sheet.suggested) start.value = String(sheet.suggested.start);
+    preview.replaceChildren(); const table = element('table');
+    sheet.preview.slice(0,5).forEach((row,index) => { const tr = element('tr'); tr.append(element('td',String(index+1))); row.forEach(value => tr.append(element('td',value))); table.append(tr); }); preview.append(table);
+    invalidate();
+  }
+  sheets.addEventListener('change',populate); columns.addEventListener('change',invalidate); start.addEventListener('input',invalidate); populate();
+}
+document.querySelectorAll('.import').forEach(button => button.addEventListener('click', async () => {
+  button.disabled = true; $('message').textContent = '';
+  try { const side = button.dataset.side; const data = await window.checker.import(side); if(data) { state[side] = data; configure(side); } }
+  catch(error) { $('message').textContent = error.message; }
+  finally { button.disabled = false; }
+}));
+function renderRows() {
+  const selected = (state.result.loadingRows || state.result.results).filter(r => ($('filter').value === 'all' || r.status === $('filter').value) && r.container.includes($('search').value.toUpperCase().replace(/[\s-]/g,'')));
+  $('rows').replaceChildren(); selected.slice(0,2000).forEach(r => { const tr = element('tr'); tr.className = r.status.toLowerCase().replace(/ /g,'-'); tr.append(element('td',String(r.sourceRow ?? '')),element('td',r.container || 'Not assigned'),element('td',`${r.size || ''} ${r.type || ''}`.trim()),element('td',r.booking || ''));  const td = element('td'), badge = element('span',r.status); badge.className = 'badge'+(r.status==='Delivered' ? ' delivered' : r.status==='Blocked' ? ' blocked' : ''); td.append(badge); tr.append(td); $('rows').append(tr); });
+  $('shown').textContent = `${selected.length} loading-list rows${selected.length>2000 ? ' · Showing the first 2,000; marked Excel includes the full loading list.' : ''}`;
+}
+$('compare').addEventListener('click', async () => {
+  $('compare').disabled = true; $('message').textContent = '';
+  try {
+    const result = await window.checker.compare(selections()); state.result = result;
+    if (!(result.countedBookingRows ?? result.vessel.containers)) { $('message').textContent = 'No valid container numbers found in one of the lists. Check the worksheet, column and first data row.'; return; }
+    $('vesselName').textContent = result.vesselName || 'Vessel loading list';
+    $('total').textContent = result.bookedTotal ?? result.results.length;
+    $('received').textContent = result.numberedContainers ?? result.results.length;
+    $('awaiting').textContent = result.awaitingNumbers ?? 0;
+    $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.awaitingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
+     const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
+    $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
+    $('delivered').textContent = delivered; $('outstanding').textContent = result.results.length-delivered;
+    $('quality').textContent = `${result.countedBookingRows} bill-of-lading rows · ${result.numberedRows} rows with container numbers represent ${result.numberedContainers} distinct containers · ${result.awaitingNumbers} rows await container numbers${result.invalidNumbers ? ' · '+result.invalidNumbers+' rows have invalid numbers' : ''}. Repeated container numbers are counted once; all bill-of-lading rows remain in the overview and marked Excel. Check digits are not verified.`;
+    $('quayOnly').textContent = `${result.quayOnly.length} quay containers are outside this vessel list and excluded from the results.`;
+    $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
+  } catch(error) { $('message').textContent = error.message; }
+  finally { $('compare').disabled = false; }
+});
+$('filter').addEventListener('change',renderRows); $('search').addEventListener('input',renderRows);
 
-A Windows desktop app that compares a vessel loading list with the containers currently on quay. Files are processed locally.
 
-## Use
+$('export-marked').addEventListener('click',async () => { try { if(await window.checker.exportMarked(selections())) $('message').textContent = 'Marked loading list saved. Original file unchanged.'; } catch(error) { $('message').textContent = error.message; } });
 
-Install the Windows app using the Setup executable, then open Loading List Checker, import both Excel `.xls` or `.xlsx` files, choose each worksheet and container-number column, and confirm the first data row (usually 2 when row 1 contains headings). Click **Compare lists**.
+if (window.checker.updates) {
+  const api = window.checker.updates;
+  let updateState;
+  function renderUpdate(state) {
+    if (!state) return;
+    updateState = state;
+    $('update-settings').hidden = state.phase === 'disabled';
+    $('update-current').textContent = `Installed version: ${state.version}`;
+    $('update-settings-message').textContent = state.message;
+    $('update-check').disabled = ['checking','downloading','ready'].includes(state.phase);
+    const labels = { available: [`Update ${state.latestVersion} available`,'Download update'], downloading: ['Downloading update',null], ready: ['Update ready','Restart and update'], error: ['Update unavailable','Retry'] };
+    const label = labels[state.phase];
+    $('update-banner').hidden = !label;
+    if (!label) return;
+    $('update-title').textContent = label[0];
+    $('update-message').textContent = state.message;
+    $('update-action').hidden = !label[1];
+    $('update-action').textContent = label[1] || '';
+    $('update-progress').hidden = state.phase !== 'downloading';
+    $('update-progress').value = state.progress || 0;
+  }
+  async function action(operation) {
+    try { const state = await operation(); if (state && typeof state === 'object') renderUpdate(state); }
+    catch { $('update-settings').open = true; $('update-settings-message').textContent = 'Could not complete this action. Check your internet connection and try again.'; }
+  }
+  api.onState(renderUpdate);
+  api.get().then(renderUpdate).catch(() => {});
+  $('update-later').addEventListener('click', () => { $('update-banner').hidden = true; });
+  $('update-action').addEventListener('click', () => {
+    if (updateState?.phase === 'available') action(() => api.download());
+    else if (updateState?.phase === 'ready') action(() => api.install());
+    else action(() => api.check());
+  });
+  $('update-check').addEventListener('click', () => action(() => api.check()));
+}
 
-A vessel container is **Delivered** when its number appears on the quay list; otherwise it is **Outstanding**. Spaces, hyphens and letter case are ignored. Duplicate numbers count once. Blank cells and numbers outside the standard four-letter/seven-digit format are excluded and counted. ISO check digits are not validated. Quay containers outside the vessel list are counted separately. Search and filter results, then save a marked Excel loading list. CSV imports are also supported; legacy `.xls` files are supported directly.
-
-Files are limited to 25 MB. For best results use clean tables with one container per row. The app shows a five-row preview and up to 2,000 matching result rows; exports include all results. Delivery reflects presence in the imported quay snapshot, not historical delivery or live terminal status.
-
-## Development
-
-Requires Node.js 22 or newer and npm. Use the existing checkout; cloud tasks are isolated and do not need a separate worktree.
-
-```sh
-npm ci
-npm test
-npm start
-```
-
-`npm start` needs a graphical desktop and Electron's Linux system libraries when developing on Linux. Tests run headlessly.
-
-## Windows build
-
-```sh
-npm run dist:win
-```
-
-The Windows x64 installer is written to `dist/`. Windows builds are unsigned; production distribution should use your organization's code-signing certificate. Build NSIS installers on Windows (the release workflow does this). Linux NSIS builds require Wine even when executable resource editing is disabled. To prepare only the unpacked Windows app on Linux, run `./node_modules/.bin/electron-builder --win dir --x64 -c.win.signAndEditExecutable=false --publish never`.
-
-## Vessel overview
-
-The supplied system export is detected automatically: loading-list column E, header on row 6, data from row 7; terminal export column C, data from row 2. Selections remain editable. Rows stay in loading-list order with row number, size/type and booking. Delivered rows are green, outstanding rows amber, and booking rows without usable container numbers grey (No containernumber). Counts show unique valid containers; duplicate loading rows remain visible. Save marked Excel exports all loading-sheet values and adds a highlighted Terminal status column. It recreates the worksheet rather than preserving the original print layout, formatting or formulas; the source file remains unchanged.
-
-## Booking totals and bills of lading
-
-Each known container number counts once, even if it appears on multiple bill-of-lading rows. All original rows remain visible and are marked in Excel. Container numbers received shows distinct valid numbers. The total booked count uses the sheet's `TOTAL units` value when present; otherwise it counts distinct known containers plus unnumbered booking rows and invalid-number rows requiring review. Awaiting container numbers counts rows with an empty container-number cell; these cannot be deduplicated reliably until a number is provided. Footer and padding rows are excluded.
-
-A warning appears only when the stated total differs from these container counts, not merely because one container has multiple bills of lading. Export uses Save marked Excel; CSV imports remain supported.
-
-## Marked Excel columns
-
-Saved Excel omits Seal No, POL, POD, BL No, the source Status, Weight (including Weight (ton)), Tare, Gross, IMO, Ocean Vessel, Ocean carrier, Ocean BL No, Stock, Forwarder VAT No and SKK/KFK. Matching is case-insensitive and ignores spacing and punctuation in these headers. The generated Terminal status column remains. All bill-of-lading rows and retained column values remain in order. Missing container numbers are labelled No containernumber in the app and Excel.
-
-## In-app updates (public GitHub releases, v0.7.0 onward)
-
-Install the Windows Setup executable and use the installed Start-menu app. Public GitHub releases need no account, token or connection setup. Previously saved encrypted updater tokens are removed on startup without reading or decrypting them.
-
-The app checks on startup and every four hours, with a manual Check for updates option under App updates. A top banner offers Download update and then Restart and update. Save your marked Excel before confirming restart. Offline errors do not affect list comparison. Container files are never uploaded.
-
-Future releases need the NSIS installer, latest.yml with SHA-512 checksums, and its blockmap. The release workflow uploads these before publication, then verifies the public feed and performs a native Windows download check with no GitHub token. Publishing the release still uses the scoped GitHub Actions token. Final installed-app replacement and restart require a workstation check. Builds remain unsigned.
-
-Migration from v0.6.0: install v0.7.0 once manually if you have not configured the old private updater. If it already has a working token, it can download v0.7.0; subsequent checks use the public feed without credentials. Older portable versions also require a one-time installer migration.
-
-## Package size
-
-The installer includes Electron's Chromium/Node runtime. From v0.8.0, it packages only en-US and en-GB Electron locale files and excludes unused spreadsheet browser bundles. Legacy Excel code-page support and all Node runtime files are retained. The Windows release test loads dependencies from the packaged app.asar and checks XLS, XLSX, CSV, marked Excel and public-update downloads. Large reductions beyond this would require migrating away from Electron.
-
-## Browser portal
-
-The browser app uses the same matching, bill-of-lading counts and marked-Excel generator as the desktop app. Each PC works independently. It imports XLS, XLSX and CSV locally in memory, and downloads the marked XLSX without sending container data to a server. Closing or refreshing the page clears imported lists. There is no shared database or history.
-
-Build with `npm run build:web`; generated files are in `dist/web`. For local development, serve that directory with `python -m http.server 4173 --bind 127.0.0.1 --directory dist/web`. The browser app is deployed by `.github/workflows/web-portal.yml` to GitHub Pages. Built JavaScript filenames include a content hash so page reloads fetch changed bundles. Dependencies are bundled locally; there are no external script/CDN dependencies. The browser app's Content Security Policy disables fetch/XHR connections.
-
-For organisational rollout, host the same static files on an approved internal site or existing SSO portal. No app installation or shared database is required for independent PC use. The browser app requires a connection to load; it has no offline/PWA cache. Modern Edge and Chrome are the primary browsers tested. Excel downloads use the browser's download location and company download policies. The desktop app remains preferable when reliable offline startup or tighter Windows integration is needed.
+if (window.checker.emailMarked) $('email-marked').addEventListener('click', async () => { const button = $('email-marked'); button.disabled = true; try { if (await window.checker.emailMarked(selections())) $('message').textContent = 'Mail draft downloaded with the marked Excel attached. Open it in Outlook, add recipients and send. If it opens in reading mode, choose Forward.'; } catch (error) { $('message').textContent = error.message; } finally { button.disabled = false; } });

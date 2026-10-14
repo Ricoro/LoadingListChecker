@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 function element(tag, text) { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; }
 function invalidate() { state.result = null; $('results').hidden = true; $('compare').disabled = !(state.vessel && state.quay); $('message').textContent = ''; }
 function selections() {
-  return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet').value), column: Number($(side+'-column').value), start: Number($(side+'-start').value) }]));
+  return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet').value), column: Number($(side+'-column').value), start: Number($(side+'-start').value), ...(side === 'quay' ? { blockedColumn: Number($('quay-blocked').value) } : {}) }]));
 }
 function configure(side) {
   const data = state[side], host = $(side).querySelector('.configuration');
@@ -13,12 +13,15 @@ function configure(side) {
   data.sheets.forEach((s,i) => { const option = element('option', `${s.name} (${s.count} rows)`); option.value = i; sheets.append(option); });
   sheetLabel.append(sheets); host.append(sheetLabel);
   const columnLabel = element('label','Container-number column'); const columns = element('select'); columns.id = side+'-column'; columnLabel.append(columns); host.append(columnLabel);
+  let blocked;
+  if (side === 'quay') { const label = element('label', 'Blocked column'); blocked = element('select'); blocked.id = 'quay-blocked'; label.append(blocked); host.append(label); blocked.addEventListener('change', invalidate); }
   const startLabel = element('label','First data row'); const start = element('input'); start.type = 'number'; start.min = '1'; start.value = '2'; start.id = side+'-start'; startLabel.append(start); host.append(startLabel);
   const preview = element('div'); preview.className = 'preview'; host.append(preview);
   function populate() {
     const sheet = data.sheets[Number(sheets.value)]; columns.replaceChildren();
     const first = sheet.preview[0] || [];
     for (let i=0;i<sheet.columns;i++) { const option = element('option', `Column ${i+1}${first[i] ? ' — '+first[i] : ''}`); option.value = i; columns.append(option); }
+    if (blocked) { blocked.replaceChildren(); const none = element('option', 'No blocked column'); none.value = '-1'; blocked.append(none); for (let i=0;i<sheet.columns;i++) { const option = element('option', `Column ${i+1}${first[i] ? ' — '+first[i] : ''}`); option.value = i; blocked.append(option); } blocked.value = String(sheet.suggestedBlockedColumn ?? -1); }
     const guessed = first.findIndex(v => /container|cntr|unit\s*(no|number)/i.test(String(v)));
     columns.value = String(sheet.suggested?.column ?? Math.max(0,guessed));
     start.value = first.some(v => /^[A-Za-z]{4}[\s-]*\d{7}$/.test(String(v).trim())) ? '1' : '2';
@@ -37,7 +40,7 @@ document.querySelectorAll('.import').forEach(button => button.addEventListener('
 }));
 function renderRows() {
   const selected = (state.result.loadingRows || state.result.results).filter(r => ($('filter').value === 'all' || r.status === $('filter').value) && r.container.includes($('search').value.toUpperCase().replace(/[\s-]/g,'')));
-  $('rows').replaceChildren(); selected.slice(0,2000).forEach(r => { const tr = element('tr'); tr.className = r.status.toLowerCase().replace(/ /g,'-'); tr.append(element('td',String(r.sourceRow ?? '')),element('td',r.container || 'Not assigned'),element('td',`${r.size || ''} ${r.type || ''}`.trim()),element('td',r.booking || ''));  const td = element('td'), badge = element('span',r.status); badge.className = 'badge'+(r.status==='Delivered' ? ' delivered' : ''); td.append(badge); tr.append(td); $('rows').append(tr); });
+  $('rows').replaceChildren(); selected.slice(0,2000).forEach(r => { const tr = element('tr'); tr.className = r.status.toLowerCase().replace(/ /g,'-'); tr.append(element('td',String(r.sourceRow ?? '')),element('td',r.container || 'Not assigned'),element('td',`${r.size || ''} ${r.type || ''}`.trim()),element('td',r.booking || ''));  const td = element('td'), badge = element('span',r.status); badge.className = 'badge'+(r.status==='Delivered' ? ' delivered' : r.status==='Blocked' ? ' blocked' : ''); td.append(badge); tr.append(td); $('rows').append(tr); });
   $('shown').textContent = `${selected.length} loading-list rows${selected.length>2000 ? ' · Showing the first 2,000; marked Excel includes the full loading list.' : ''}`;
 }
 $('compare').addEventListener('click', async () => {
@@ -50,7 +53,8 @@ $('compare').addEventListener('click', async () => {
     $('received').textContent = result.numberedContainers ?? result.results.length;
     $('awaiting').textContent = result.awaitingNumbers ?? 0;
     $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.awaitingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
-     const delivered = result.results.filter(r=>r.status==='Delivered').length;
+     const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
+    $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
     $('delivered').textContent = delivered; $('outstanding').textContent = result.results.length-delivered;
     $('quality').textContent = `${result.countedBookingRows} bill-of-lading rows · ${result.numberedRows} rows with container numbers represent ${result.numberedContainers} distinct containers · ${result.awaitingNumbers} rows await container numbers${result.invalidNumbers ? ' · '+result.invalidNumbers+' rows have invalid numbers' : ''}. Repeated container numbers are counted once; all bill-of-lading rows remain in the overview and marked Excel. Check digits are not verified.`;
     $('quayOnly').textContent = `${result.quayOnly.length} quay containers are outside this vessel list and excluded from the results.`;
@@ -98,3 +102,5 @@ if (window.checker.updates) {
   });
   $('update-check').addEventListener('click', () => action(() => api.check()));
 }
+
+if (window.checker.emailMarked) $('email-marked').addEventListener('click', async () => { const button = $('email-marked'); button.disabled = true; try { if (await window.checker.emailMarked(selections())) $('message').textContent = 'Mail draft downloaded with the marked Excel attached. Open it in Outlook, add recipients and send. If it opens in reading mode, choose Forward.'; } catch (error) { $('message').textContent = error.message; } finally { button.disabled = false; } });
