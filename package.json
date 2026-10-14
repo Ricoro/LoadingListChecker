@@ -1,0 +1,31 @@
+{
+  "name": "loading-list-checker",
+  "version": "0.2.0",
+  "description": "Compare vessel and quay container lists locally",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist:win": "electron-builder --win portable --x64"
+  },
+  "dependencies": {
+    "@e965/xlsx": "0.20.3",
+    "csv-parse": "6.1.0",
+    "exceljs": "4.4.0"
+  },
+  "devDependencies": {
+    "electron": "39.8.3",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.ricoro.loadinglistchecker",
+    "productName": "Loading List Checker",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  }
+}
