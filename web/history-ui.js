@@ -3,6 +3,8 @@ const { SharePointStore } = require('./sharepoint-store');
 const { displayTimestamp } = require('./history-record');
 function setupHistory({config,snapshot,open}) {
   const host=document.getElementById('shared-history');
+  if (!config.enabled || !config.tenantId || !config.clientId) return;
+  host.hidden=false;
   const title=document.createElement('h2');title.textContent='Previous comparisons';host.append(title);
   const message=document.createElement('p'), list=document.createElement('div');host.append(message);
   if (!config.tenantId || !config.clientId) {message.textContent='Shared history needs one-time Microsoft 365 setup by your IT team. Comparisons currently stay on this PC until you download them.';return;}

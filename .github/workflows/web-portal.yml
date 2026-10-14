@@ -36,6 +36,7 @@ jobs:
       - run: npm test
       - run: npm run build:web
         env:
+          SHAREPOINT_HISTORY_ENABLED: ${{ vars.SHAREPOINT_HISTORY_ENABLED }}
           M365_TENANT_ID: ${{ vars.M365_TENANT_ID }}
           M365_CLIENT_ID: ${{ vars.M365_CLIENT_ID }}
           SHAREPOINT_SITE_URL: ${{ vars.SHAREPOINT_SITE_URL }}

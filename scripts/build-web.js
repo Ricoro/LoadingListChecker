@@ -5,7 +5,7 @@ async function build() {
   const output = path.resolve('dist/web');
   await fs.rm(output, { recursive: true, force: true });
   await fs.mkdir(output, { recursive: true });
-  const config = {tenantId:process.env.M365_TENANT_ID || '',clientId:process.env.M365_CLIENT_ID || '',siteUrl:process.env.SHAREPOINT_SITE_URL || 'https://seabownv.sharepoint.com/sites/seabow',folder:process.env.SHAREPOINT_HISTORY_FOLDER || 'LoadingListCheckerExcels',driveId:process.env.SHAREPOINT_DRIVE_ID || ''};
+  const config = {enabled:process.env.SHAREPOINT_HISTORY_ENABLED === 'true',tenantId:process.env.M365_TENANT_ID || '',clientId:process.env.M365_CLIENT_ID || '',siteUrl:process.env.SHAREPOINT_SITE_URL || 'https://seabownv.sharepoint.com/sites/seabow',folder:process.env.SHAREPOINT_HISTORY_FOLDER || 'LoadingListCheckerExcels',driveId:process.env.SHAREPOINT_DRIVE_ID || ''};
   for (const id of [config.tenantId, config.clientId]) if (id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error('Microsoft tenant/client IDs must be GUIDs.');
   const site = new URL(config.siteUrl);
   if (!/^[a-z0-9-]+\.sharepoint\.com$/i.test(site.hostname) || site.protocol !== 'https:') throw new Error('Invalid SharePoint site');
@@ -14,9 +14,9 @@ async function build() {
   let html = await fs.readFile('src/index.html', 'utf8');
   html = html.replace('default-src \'self\'; script-src \'self\'; style-src \'self\'', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src https://graph.microsoft.com https://login.microsoftonline.com https://*.sharepoint.com https://*.files.1drv.com; frame-src 'self' https://login.microsoftonline.com; object-src 'none'; base-uri 'none'");
   html = html.replace('VESSEL OPERATIONS', 'VESSEL OPERATIONS · BROWSER APP');
-  html = html.replace('</header>', '<section class="portal-intro"><p>Use this page independently on any PC with a modern browser. Files are compared in your browser. When shared history is connected and you sign in, comparison snapshots and marked Excel files are saved privately in your organisation’s SharePoint folder.</p></section></header>');
+  html = html.replace('</header>', '<section class="portal-intro"><p>Use this page independently on any PC with a modern browser. Files are compared in your browser. Your files stay on this computer. Use Save as Excel or Mail to keep or share the results.</p></section></header>');
   html = html.replace('<button id="export-marked">Save as Excel</button>', '<button id="export-marked">Save as Excel</button><button id="email-marked" title="Download an Outlook email draft with the marked Excel attached">Mail</button>');
-  html = html.replace('<main>', '<main><section id="shared-history" class="portal-intro"></section>');
+  html = html.replace('<main>', '<main><section id="shared-history" class="portal-intro" hidden></section>');
   html = html.replace('<script src="renderer.js"></script>', `<script src="${path.basename(script)}"></script>`);
   await fs.writeFile(path.join(output, 'index.html'), html);
   await fs.writeFile(path.join(output, 'style.css'), (await fs.readFile('src/style.css', 'utf8')) + '\n.portal-intro{margin-top:22px;padding:16px 20px;background:#edf4f6;border:1px solid #d3e2e8;border-radius:10px}.portal-intro p{margin:0 0 12px}\n');
