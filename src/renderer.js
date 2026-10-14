@@ -41,7 +41,7 @@ document.querySelectorAll('.import').forEach(button => button.addEventListener('
 function renderRows() {
   const selected = (state.result.loadingRows || state.result.results).filter(r => ($('filter').value === 'all' || r.status === $('filter').value) && r.container.includes($('search').value.toUpperCase().replace(/[\s-]/g,'')));
   $('rows').replaceChildren(); selected.slice(0,2000).forEach(r => { const tr = element('tr'); tr.className = r.status.toLowerCase().replace(/ /g,'-'); tr.append(element('td',String(r.sourceRow ?? '')),element('td',r.container || 'Not assigned'),element('td',`${r.size || ''} ${r.type || ''}`.trim()),element('td',r.booking || ''));  const td = element('td'), badge = element('span',r.status); badge.className = 'badge'+(r.status==='Delivered' ? ' delivered' : r.status==='Blocked' ? ' blocked' : ''); td.append(badge); tr.append(td); $('rows').append(tr); });
-  $('shown').textContent = `${selected.length} loading-list rows${selected.length>2000 ? ' · Showing the first 2,000; marked Excel includes the full loading list.' : ''}`;
+  $('shown').textContent = `${selected.length} loading-list rows${selected.length>2000 ? ' · Showing the first 2,000; Excel includes each numbered container once and all bookings awaiting numbers.' : ''}`;
 }
 function showResult(result) { state.result = result;
     if (!(result.countedBookingRows ?? result.vessel.containers)) { $('message').textContent = 'No valid container numbers found in one of the lists. Check the worksheet, column and first data row.'; return; }
@@ -53,7 +53,7 @@ function showResult(result) { state.result = result;
      const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
     $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
     $('delivered').textContent = delivered;
-    $('quality').textContent = 'Repeated container numbers count once. On terminal includes blocked containers. All bill-of-lading rows remain in the overview and Excel.';
+    $('quality').textContent = 'Repeated container numbers count once. On terminal includes blocked containers. The overview keeps all bill-of-lading rows; Excel shows each numbered container once and keeps bookings awaiting numbers.';
     $('quayOnly').textContent = `${(result.quayOnlyCount ?? result.quayOnly.length)} quay containers are outside this vessel list and excluded from the results.`;
     $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
 }

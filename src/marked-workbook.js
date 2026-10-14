@@ -1,5 +1,6 @@
 const ExcelJS = require('exceljs');
 const { overview } = require('./overview');
+const { normalize } = require('./compare');
 const excludedHeaders = new Set(['sealno', 'pol', 'pod', 'blno', 'status', 'weight', 'tare', 'gross', 'imo', 'oceanvessel', 'oceancarrier', 'oceanblno', 'stock', 'forwardervatno', 'skkkfk']);
 const normalizeHeader = value => String(value ?? '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
 function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedColumn = 4) {
@@ -13,11 +14,17 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedCol
     return !excludedHeaders.has(header) && header !== 'terminalstatus';
   });
   const width = keptColumns.length;
+  const exportedContainers = new Set();
   vesselSheet.rows.forEach((values, index) => {
+    const status = statuses.get(index + 1);
+    if (status && status !== 'No containernumber') {
+      const container = normalize(values[selection.column]);
+      if (exportedContainers.has(container)) return;
+      exportedContainers.add(container);
+    }
     const row = sheet.addRow(keptColumns.map(column => values[column] ?? ''));
     if (index === selection.start - 2) { row.getCell(width + 1).value = 'Terminal status'; row.font = { bold: true }; }
     if (index < selection.start - 1 || !values.some(value => String(value).trim())) return;
-    const status = statuses.get(index + 1);
     if (!status) return;
     row.getCell(width + 1).value = status;
     if (status === 'Blocked') row.font = { bold: true, color: { argb: 'FFFFFFFF' } };

@@ -9,7 +9,7 @@ const { readList } = require('../src/import');
 const { suggestSelection } = require('../src/import');
 const { overview } = require('../src/overview');
 const { markedWorkbook } = require('../src/marked-workbook');
-test('blocked terminal containers override delivered and mark all split-bill rows deep red', async () => {
+test('blocked terminal containers override delivered and export once in deep red', async () => {
   const vessel = { rows: [['Cont. No','Booking No'],['MSCU1234567','BOOK1'],['MSCU1234567','BOOK1'],['ABCD7654321','BOOK2'],['','BOOK3']] };
   const quay = [['Containers','Container','MSCU1234567','',' no '],['Containers','Container','mscu-1234567','',' YES '],['Containers','Container','ABCD7654321','','No']];
   const data = compare(vessel.rows.slice(1),0,quay,2,4);
@@ -19,12 +19,12 @@ test('blocked terminal containers override delivered and mark all split-bill row
   assert.equal(compare(vessel.rows.slice(1),0,quay,2,-1).blockedCount,0);
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await markedWorkbook(vessel,{column:0,start:2},quay,2,4).xlsx.writeBuffer());
-  for (const number of [2,3]) {
+  for (const number of [2]) {
     assert.equal(workbook.worksheets[0].getCell(`C${number}`).value,'Blocked');
     assert.equal(workbook.worksheets[0].getCell(`A${number}`).fill.fgColor.argb,'FF8B1E2D');
     assert.equal(workbook.worksheets[0].getCell(`A${number}`).font.color.argb,'FFFFFFFF');
   }
-  assert.equal(workbook.worksheets[0].getCell('C4').value,'Delivered');
+  assert.equal(workbook.worksheets[0].getCell('C3').value,'Delivered');
 });
 test('mail draft contains a valid marked Excel attachment and cannot inject headers', async () => {
   const { createEmailDraft } = require('../src/email-draft');
@@ -71,7 +71,7 @@ test('legacy Excel import, automatic column selection and row highlighting', asy
     const output=path.join(dir,'marked.xlsx'); await markedWorkbook(sheet,selection,[['MSCU1234567']],0).xlsx.writeFile(output);
     const readback=new ExcelJS.Workbook(); await readback.xlsx.readFile(output); const marked=readback.worksheets[0];
     assert.equal(marked.getCell('G8').value,'Delivered'); assert.equal(marked.getCell('E8').fill.fgColor.argb,'FFDDF1E4');
-    assert.equal(marked.getCell('G7').value,'No containernumber'); assert.equal(marked.getCell('G9').value,'Outstanding'); assert.equal(marked.getCell('G11').value,null);
+    assert.equal(marked.getCell('G7').value,'No containernumber'); assert.equal(marked.getCell('G9').value,'Outstanding'); assert.equal(marked.getCell('G10').value,null);
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
 });
 test('counts split bills of lading as one container and keeps unnumbered bookings', () => {
@@ -135,4 +135,16 @@ test('desktop import, comparison and export handlers process Excel end to end', 
     assert.equal(marked.worksheets[0].getCell('B3').value,'Outstanding');
     assert.throws(()=>handlers.get('compare')(null,{...selections,vessel:{sheet:0,column:0,start:0}}));
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
+});
+
+test('marked Excel exports normalized container numbers once while keeping all unnumbered bookings and source details', async () => {
+  const source={rows:[['Loading list'],['Cont. No','Booking No','Client'],['MSCU1234567','BOOK1','First client'],[' mscu-1234567 ','BOOK2','Second client'],['','BOOK3','Blank one'],['','BOOK3','Blank two'],['ABCD7654321','BOOK4','Other client'],['TOTAL units: 4']]};
+  const bytes=await markedWorkbook(source,{column:0,start:3},[['MSCU1234567']],0,-1).xlsx.writeBuffer();
+  const book=new ExcelJS.Workbook();await book.xlsx.load(bytes);const sheet=book.worksheets[0];
+  assert.equal(sheet.rowCount,7);
+  assert.deepEqual(sheet.getRow(3).values.slice(1),['MSCU1234567','BOOK1','First client','Delivered']);
+  assert.equal(sheet.getCell('D4').value,'No containernumber');assert.equal(sheet.getCell('C4').value,'Blank one');
+  assert.equal(sheet.getCell('D5').value,'No containernumber');assert.equal(sheet.getCell('C5').value,'Blank two');
+  assert.equal(sheet.getCell('D6').value,'Outstanding');assert.equal(sheet.getCell('A7').value,'TOTAL units: 4');
+  assert.equal(source.rows.length,8);
 });
