@@ -1,6 +1,6 @@
 {
   "name": "loading-list-checker",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Compare vessel and quay container lists locally",
   "main": "src/main.js",
   "scripts": {
@@ -40,7 +40,7 @@
         "provider": "github",
         "owner": "Ricoro",
         "repo": "LoadingListChecker",
-        "private": true,
+        "private": false,
         "releaseType": "release"
       }
     ]

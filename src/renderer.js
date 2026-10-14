@@ -70,12 +70,10 @@ if (window.checker.updates) {
     if (!state) return;
     updateState = state;
     $('update-settings').hidden = state.phase === 'disabled';
-    $('update-current').textContent = `Installed version: ${state.version}${state.connected ? ' · GitHub connected' : ''}`;
+    $('update-current').textContent = `Installed version: ${state.version}`;
     $('update-settings-message').textContent = state.message;
-    $('update-connect').disabled = ['checking','downloading','ready'].includes(state.phase);
-    $('update-disconnect').disabled = !state.connected || ['checking','downloading','ready'].includes(state.phase);
-    $('update-check').disabled = !state.connected || ['checking','downloading','ready'].includes(state.phase);
-    const labels = { setup: ['Enable app updates','Connect GitHub'], available: [`Update ${state.latestVersion} available`,'Download update'], downloading: ['Downloading update',null], ready: ['Update ready','Restart and update'], error: ['Update unavailable','Retry'] };
+    $('update-check').disabled = ['checking','downloading','ready'].includes(state.phase);
+    const labels = { available: [`Update ${state.latestVersion} available`,'Download update'], downloading: ['Downloading update',null], ready: ['Update ready','Restart and update'], error: ['Update unavailable','Retry'] };
     const label = labels[state.phase];
     $('update-banner').hidden = !label;
     if (!label) return;
@@ -88,18 +86,15 @@ if (window.checker.updates) {
   }
   async function action(operation) {
     try { const state = await operation(); if (state && typeof state === 'object') renderUpdate(state); }
-    catch { $('update-settings').open = true; $('update-settings-message').textContent = 'Could not complete this action. Check the connection and try again.'; }
+    catch { $('update-settings').open = true; $('update-settings-message').textContent = 'Could not complete this action. Check your internet connection and try again.'; }
   }
   api.onState(renderUpdate);
   api.get().then(renderUpdate).catch(() => {});
   $('update-later').addEventListener('click', () => { $('update-banner').hidden = true; });
   $('update-action').addEventListener('click', () => {
-    if (updateState?.phase === 'setup' || (updateState?.phase === 'error' && !updateState.connected)) { $('update-settings').open = true; $('update-token').focus(); }
-    else if (updateState?.phase === 'available') action(() => api.download());
+    if (updateState?.phase === 'available') action(() => api.download());
     else if (updateState?.phase === 'ready') action(() => api.install());
     else action(() => api.check());
   });
-  $('update-connect').addEventListener('click', async () => { const token = $('update-token').value; $('update-token').value = ''; await action(() => api.connect(token)); });
   $('update-check').addEventListener('click', () => action(() => api.check()));
-  $('update-disconnect').addEventListener('click', () => action(() => api.disconnect()));
 }
