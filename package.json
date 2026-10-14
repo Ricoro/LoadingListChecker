@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "dist:win": "electron-builder --win nsis --x64"
+    "dist:win": "electron-builder --win nsis --x64",
+    "build:web": "node scripts/build-web.js"
   },
   "dependencies": {
     "@e965/xlsx": "0.20.3",
@@ -16,7 +17,8 @@
   },
   "devDependencies": {
     "electron": "39.8.3",
-    "electron-builder": "26.0.12"
+    "electron-builder": "26.0.12",
+    "esbuild": "0.28.2"
   },
   "build": {
     "appId": "com.ricoro.loadinglistchecker",
