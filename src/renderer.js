@@ -52,8 +52,8 @@ function showResult(result) { state.result = result;
     $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.awaitingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
      const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
     $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
-    $('delivered').textContent = delivered; $('outstanding').textContent = result.results.length-delivered;
-    $('quality').textContent = `${result.countedBookingRows} bill-of-lading rows · ${result.numberedRows} rows with container numbers represent ${result.numberedContainers} distinct containers · ${result.awaitingNumbers} rows await container numbers${result.invalidNumbers ? ' · '+result.invalidNumbers+' rows have invalid numbers' : ''}. Repeated container numbers are counted once; all bill-of-lading rows remain in the overview and marked Excel. Check digits are not verified.`;
+    $('delivered').textContent = delivered;
+    $('quality').textContent = 'Repeated container numbers count once. On terminal includes blocked containers. All bill-of-lading rows remain in the overview and Excel.';
     $('quayOnly').textContent = `${(result.quayOnlyCount ?? result.quayOnly.length)} quay containers are outside this vessel list and excluded from the results.`;
     $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
 }
