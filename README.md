@@ -53,3 +53,7 @@ The app checks on startup and every four hours, with a manual Check for updates 
 Future releases need the NSIS installer, latest.yml with SHA-512 checksums, and its blockmap. The release workflow uploads these before publication, then verifies the public feed and performs a native Windows download check with no GitHub token. Publishing the release still uses the scoped GitHub Actions token. Final installed-app replacement and restart require a workstation check. Builds remain unsigned.
 
 Migration from v0.6.0: install v0.7.0 once manually if you have not configured the old private updater. If it already has a working token, it can download v0.7.0; subsequent checks use the public feed without credentials. Older portable versions also require a one-time installer migration.
+
+## Package size
+
+The installer includes Electron's Chromium/Node runtime. From v0.8.0, it packages only en-US and en-GB Electron locale files and excludes unused spreadsheet browser bundles. Legacy Excel code-page support and all Node runtime files are retained. The Windows release test loads dependencies from the packaged app.asar and checks XLS, XLSX, CSV, marked Excel and public-update downloads. Large reductions beyond this would require migrating away from Electron.

@@ -1,6 +1,6 @@
 {
   "name": "loading-list-checker",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Compare vessel and quay container lists locally",
   "main": "src/main.js",
   "scripts": {
@@ -23,7 +23,13 @@
     "productName": "Loading List Checker",
     "files": [
       "src/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/exceljs/dist/**",
+      "!node_modules/@e965/xlsx/dist/xlsx*",
+      "!node_modules/@e965/xlsx/xlsx.mjs",
+      "!node_modules/csv-parse/dist/esm/**",
+      "!node_modules/csv-parse/dist/iife/**",
+      "!node_modules/csv-parse/dist/umd/**"
     ],
     "win": {
       "target": "nsis"
@@ -43,6 +49,10 @@
         "private": false,
         "releaseType": "release"
       }
+    ],
+    "electronLanguages": [
+      "en-US",
+      "en-GB"
     ]
   }
 }
