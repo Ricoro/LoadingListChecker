@@ -1,16 +1,17 @@
 {
   "name": "loading-list-checker",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Compare vessel and quay container lists locally",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "dist:win": "electron-builder --win portable --x64"
+    "dist:win": "electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@e965/xlsx": "0.20.3",
     "csv-parse": "6.1.0",
+    "electron-updater": "6.8.9",
     "exceljs": "4.4.0"
   },
   "devDependencies": {
@@ -25,7 +26,23 @@
       "package.json"
     ],
     "win": {
-      "target": "portable"
-    }
+      "target": "nsis"
+    },
+    "artifactName": "Loading-List-Checker-Setup-${version}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Ricoro",
+        "repo": "LoadingListChecker",
+        "private": true,
+        "releaseType": "release"
+      }
+    ]
   }
 }

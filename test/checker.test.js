@@ -92,7 +92,7 @@ test('desktop import, comparison and export handlers process Excel end to end', 
     }
     const output = path.join(dir,'results.xlsx'), handlers = new Map();
     const electron = { app:{whenReady:()=>({then:()=>{}}),on:()=>{}}, BrowserWindow:class {}, ipcMain:{handle:(name,handler)=>handlers.set(name,handler)},dialog:{showOpenDialog:async()=>({canceled:false,filePaths:[inputs.shift()]}),showSaveDialog:async()=>({canceled:false,filePath:output})} };
-    vm.runInNewContext(await fs.readFile(path.join(__dirname,'../src/main.js'),'utf8'), {require:name=>name==='electron'?electron:name==='./import'?require('../src/import'):name==='./compare'?require('../src/compare'):name==='./overview'?require('../src/overview'):name==='./marked-workbook'?require('../src/marked-workbook'):require(name),__dirname:path.join(__dirname,'../src')});
+    vm.runInNewContext(await fs.readFile(path.join(__dirname,'../src/main.js'),'utf8'), {require:name=>name==='electron'?electron:name==='./import'?require('../src/import'):name==='./compare'?require('../src/compare'):name==='./overview'?require('../src/overview'):name==='./marked-workbook'?require('../src/marked-workbook'):name==='./updates'?require('../src/updates'):require(name),__dirname:path.join(__dirname,'../src')});
     assert.equal((await handlers.get('import')(null,'vessel')).sheets[0].count,3);
     await handlers.get('import')(null,'quay');
     const selections={vessel:{sheet:0,column:0,start:2},quay:{sheet:0,column:0,start:2}};

@@ -4,7 +4,7 @@ A Windows desktop app that compares a vessel loading list with the containers cu
 
 ## Use
 
-Open the portable executable, import both Excel `.xls` or `.xlsx` files, choose each worksheet and container-number column, and confirm the first data row (usually 2 when row 1 contains headings). Click **Compare lists**.
+Install the Windows app using the Setup executable, then open Loading List Checker, import both Excel `.xls` or `.xlsx` files, choose each worksheet and container-number column, and confirm the first data row (usually 2 when row 1 contains headings). Click **Compare lists**.
 
 A vessel container is **Delivered** when its number appears on the quay list; otherwise it is **Outstanding**. Spaces, hyphens and letter case are ignored. Duplicate numbers count once. Blank cells and numbers outside the standard four-letter/seven-digit format are excluded and counted. ISO check digits are not validated. Quay containers outside the vessel list are counted separately. Search and filter results, then save a marked Excel loading list. CSV imports are also supported; legacy `.xls` files are supported directly.
 
@@ -28,7 +28,7 @@ npm start
 npm run dist:win
 ```
 
-The portable Windows x64 executable is written to `dist/`. Windows builds are unsigned; production distribution should use your organization's code-signing certificate. Building on Windows is recommended. Linux cross-builds need Wine for Windows resource editing, or can disable resource editing with `npm run dist:win -- -c.win.signAndEditExecutable=false` (the application still runs but executable branding is limited).
+The Windows x64 installer is written to `dist/`. Windows builds are unsigned; production distribution should use your organization's code-signing certificate. Building on Windows is recommended. Linux cross-builds need Wine for Windows resource editing, or can disable resource editing with `npm run dist:win -- -c.win.signAndEditExecutable=false` (the application still runs but executable branding is limited).
 
 ## Vessel overview
 
@@ -43,3 +43,13 @@ A warning appears only when the stated total differs from these container counts
 ## Marked Excel columns
 
 Saved Excel omits Seal No, POL, POD, BL No, the source Status, Weight (including Weight (ton)), Tare, Gross, IMO, Ocean Vessel, Ocean carrier, Ocean BL No, Stock, Forwarder VAT No and SKK/KFK. Matching is case-insensitive and ignores spacing and punctuation in these headers. The generated Terminal status column remains. All bill-of-lading rows and retained column values remain in order. Missing container numbers are labelled No containernumber in the app and Excel.
+
+## In-app updates (v0.6.0 onward)
+
+The portable releases through v0.5.0 need one manual transition: close the old app and install `Loading-List-Checker-Setup-0.6.0.exe`. Use the installed Start-menu app thereafter. Future releases use an NSIS installer, `latest.yml` with SHA-512 download checksums, and its blockmap. All three must be uploaded before publishing a release. The release workflow does this automatically.
+
+Because the repository is private, open **App updates** and enter a fine-grained GitHub access token once. Select only `Ricoro/LoadingListChecker`, with **Contents: Read-only** (Metadata read access is automatic); your account must have repository access. Create it in GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens. Enter its value only in the app, never in chat. Organization approval may be required by your GitHub organization.
+
+The app encrypts the token using Electron safeStorage backed by Windows DPAPI and stores it in its per-user application-data directory, never in the executable or release. It checks at startup and every four hours, with a manual Check for updates option. An available update appears in a top banner. Click Download update, then Restart and update after saving your marked Excel. Restart requires confirmation. Offline/authentication errors do not affect list comparison; expired tokens can be replaced under App updates. Disconnect removes the saved token. Containers and workbooks are never uploaded.
+
+Updates require outbound HTTPS to GitHub's API and release-download hosts. Builds remain unsigned; a future code-signing certificate can be configured without placing signing credentials in the app. Native installed-app replacement should be validated on a Windows workstation; unit tests use a mocked updater; the release workflow also checks the real private update feed and runs a native Windows Electron smoke test for DPAPI token encryption, release detection and a checksum-verified installer download.

@@ -12,21 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: v0.5.0
+          ref: v0.6.0
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm test
-      - name: Build portable Windows app
+      - name: Build Windows installer
         shell: bash
         run: npm run dist:win -- -c.win.signAndEditExecutable=false -c.compression=normal --publish never
-      - name: Package portable app
+      - name: Package installer and instructions
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path release-package
-          Copy-Item 'dist/Loading List Checker 0.5.0.exe' 'release-package/Loading List Checker.exe'
+          Copy-Item 'dist/Loading-List-Checker-Setup-0.6.0.exe' 'release-package/Loading-List-Checker-Setup-0.6.0.exe'
           Copy-Item README.md release-package/README.md
           Compress-Archive -Path release-package/* -DestinationPath Loading-List-Checker-Windows.zip
       - name: Upload release download
@@ -34,9 +34,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          gh release view v0.5.0 --repo Ricoro/LoadingListChecker
+          gh release view v0.6.0 --repo Ricoro/LoadingListChecker
           if ($LASTEXITCODE -ne 0) {
-            gh release create v0.5.0 --repo Ricoro/LoadingListChecker --verify-tag --title 'Loading List Checker v0.5.0' --notes 'Windows x64 portable app. Download and extract the ZIP, then open Loading List Checker.exe. Supports Excel loading and terminal lists, delivered/outstanding highlights and marked Excel export. Files stay local. Unsigned executable; native Windows launch testing remains outstanding. No container lists are included.'
+            gh release create v0.6.0 --repo Ricoro/LoadingListChecker --verify-tag --title 'Loading List Checker v0.6.0' --draft --notes 'Windows x64 installer with in-app updates for this private repository. Download and extract the ZIP, then run Loading-List-Checker-Setup-0.6.0.exe. Supports Excel loading and terminal lists, delivered/outstanding highlights and marked Excel export. Files stay local. Unsigned executable; native Windows launch testing remains outstanding. No container lists are included.'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload v0.5.0 Loading-List-Checker-Windows.zip --repo Ricoro/LoadingListChecker --clobber
+          gh release upload v0.6.0 Loading-List-Checker-Windows.zip dist/Loading-List-Checker-Setup-0.6.0.exe dist/Loading-List-Checker-Setup-0.6.0.exe.blockmap dist/latest.yml --repo Ricoro/LoadingListChecker --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release edit v0.6.0 --repo Ricoro/LoadingListChecker --draft=false --latest
+
+      - name: Verify authenticated private update feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-update-feed.js
+      - name: Verify native Windows update download and credential encryption
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $probe = Start-Process -FilePath ./node_modules/electron/dist/electron.exe -ArgumentList scripts/windows-update-smoke.cjs -Wait -PassThru
+          if ($probe.ExitCode -ne 0) { exit $probe.ExitCode }

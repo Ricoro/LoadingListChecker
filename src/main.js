@@ -1,11 +1,23 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, safeStorage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { readList, suggestSelection } = require('./import');
 const { overview } = require('./overview');
 const { markedWorkbook } = require('./marked-workbook');
 const { compare } = require('./compare');
+const { Updates } = require('./updates');
 let window;
+let updates;
+ipcMain.handle('updates:get', () => updates?.state);
+ipcMain.handle('updates:check', () => updates?.check());
+ipcMain.handle('updates:connect', (_, token) => updates?.connect(token));
+ipcMain.handle('updates:disconnect', () => updates?.disconnect());
+ipcMain.handle('updates:download', () => updates?.download());
+ipcMain.handle('updates:install', async () => {
+  if (updates?.state.phase !== 'ready') return false;
+  const answer = await dialog.showMessageBox(window, { type: 'question', buttons: ['Restart and update', 'Keep working'], defaultId: 1, cancelId: 1, title: 'Install update', message: 'Save your marked Excel before restarting.', detail: 'Your current imported lists and comparison will close. The update will install and reopen the app.' });
+  return answer.response === 0 ? updates.install() : false;
+});
 const imports = new Map();
 ipcMain.handle('import', async (_, side) => {
   if (!['vessel', 'quay'].includes(side)) throw new Error('Invalid list.');
@@ -44,5 +56,13 @@ app.whenReady().then(() => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.loadFile(path.join(__dirname, 'index.html'));
+  if (app.isPackaged && process.platform === 'win32') {
+    updates = new Updates({ app, safeStorage, updater: require('electron-updater').autoUpdater });
+    updates.on('state', state => { if (!window.isDestroyed()) window.webContents.send('updates:state', state); });
+    updates.initialize().catch(() => updates.failure());
+    const timer = setInterval(() => updates.check().catch(() => updates.failure()), 4 * 60 * 60 * 1000);
+    timer.unref();
+    app.on('before-quit', () => clearInterval(timer));
+  }
 });
 app.on('window-all-closed', () => app.quit());
