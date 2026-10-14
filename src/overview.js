@@ -12,6 +12,11 @@ function overview(sheet, selection, quayRows, quayColumn) {
     rows.push({ sourceRow: selection.start + offset, container, booking: values[booking] || '', size: values[size] || '', type: values[type] || '', status: valid ? (terminal.has(container) ? 'Delivered' : 'Outstanding') : 'Cannot match' });
   });
   const vesselLine = sheet.rows.slice(0, selection.start - 1).find(row => row.some(value => /^M\/V\s/i.test(String(value))));
-  return { loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'Cannot match').length };
+  const declaredMatch = sheet.rows.flat().map(String).join(' ').match(/TOTAL\s+units\s*:\s*(\d+)/i);
+  const declaredTotal = declaredMatch ? Number(declaredMatch[1]) : null;
+  const numberedRows = rows.filter(row => row.status !== 'Cannot match').length;
+  const awaitingNumbers = rows.filter(row => !row.container).length;
+  const invalidNumbers = rows.filter(row => row.container && row.status === 'Cannot match').length;
+  return { bookedTotal: declaredTotal ?? rows.length, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'Cannot match').length };
 }
 module.exports = { overview };

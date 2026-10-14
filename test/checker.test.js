@@ -21,12 +21,22 @@ test('legacy Excel import, automatic column selection and row highlighting', asy
     assert.deepEqual(suggestSelection([['Group','Sort','Unit Id'],['Containers','Container','MSCU1234567']],'quay'),{column:2,start:2});
     const data=overview(sheet,selection,[['MSCU1234567']],0);
     assert.equal(data.loadingRows.length,4); assert.equal(data.missingNumbers,1);
+    assert.equal(data.bookedTotal,4); assert.equal(data.numberedRows,3); assert.equal(data.awaitingNumbers,1);
     assert.deepEqual(data.loadingRows.map(r=>r.status),['Cannot match','Delivered','Outstanding','Delivered']);
     const output=path.join(dir,'marked.xlsx'); await markedWorkbook(sheet,selection,[['MSCU1234567']],0).xlsx.writeFile(output);
     const readback=new ExcelJS.Workbook(); await readback.xlsx.readFile(output); const marked=readback.worksheets[0];
     assert.equal(marked.getCell('G8').value,'Delivered'); assert.equal(marked.getCell('E8').fill.fgColor.argb,'FFDDF1E4');
     assert.equal(marked.getCell('G7').value,'Cannot match'); assert.equal(marked.getCell('G9').value,'Outstanding'); assert.equal(marked.getCell('G11').value,null);
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
+});
+test('counts unnumbered bookings and preserves a declared-total discrepancy', () => {
+  const sheet={rows:[['No','Size','','Type','Cont. No','Booking No'],[1,'40','','HC','','BOOK1'],[2,'40','','HC','MSCU1234567','BOOK2'],[3,'40','','HC','MSCU1234567','BOOK2'],['Total','','','','TOTAL units: 2'],[],['Footer']]};
+  const result=overview(sheet,{column:4,start:2},[['MSCU1234567']],0);
+  assert.equal(result.bookedTotal,2); assert.equal(result.countedBookingRows,3);
+  assert.equal(result.numberedRows,2); assert.equal(result.awaitingNumbers,1);
+  assert.equal(result.loadingRows.length,3);
+  const allMissing=overview({rows:[sheet.rows[0],sheet.rows[1]]},{column:4,start:2},[],0);
+  assert.equal(allMissing.bookedTotal,1); assert.equal(allMissing.numberedRows,0); assert.equal(allMissing.awaitingNumbers,1);
 });
 test('matches normalized numbers, counts unique containers and excludes invalid rows', () => {
   const result = compare([[' ms cu-1234567 '], ['MSCU1234567'], ['ABCD7654321'], ['bad'], ['']], 0, [['MSCU1234567'], ['ZZZZ1234567']], 0);

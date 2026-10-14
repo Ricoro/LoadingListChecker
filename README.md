@@ -33,3 +33,7 @@ The portable Windows x64 executable is written to `dist/`. Windows builds are un
 ## Vessel overview
 
 The supplied system export is detected automatically: loading-list column E, header on row 6, data from row 7; terminal export column C, data from row 2. Selections remain editable. Rows stay in loading-list order with row number, size/type and booking. Delivered rows are green, outstanding rows amber, and booking rows without usable container numbers grey (Cannot match). Counts show unique valid containers; duplicate loading rows remain visible. Save marked Excel exports all loading-sheet values and adds a highlighted Terminal status column. It recreates the worksheet rather than preserving the original print layout, formatting or formulas; the source file remains unchanged.
+
+## Booking totals
+
+The overview counts numbered and unnumbered booking rows. Total booked containers uses the export's `TOTAL units` value when present, otherwise the number of booking rows. Container numbers received counts rows with valid numbers, including duplicates; terminal and outstanding counts remain unique container numbers. Awaiting container numbers counts booking rows with an empty container-number cell. Footer and empty padding rows are not bookings. If the stated total differs from the actual booking rows, a warning shows both totals; no rows are silently removed.
