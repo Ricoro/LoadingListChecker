@@ -9,6 +9,21 @@ const { readList } = require('../src/import');
 const { suggestSelection } = require('../src/import');
 const { overview } = require('../src/overview');
 const { markedWorkbook } = require('../src/marked-workbook');
+test('marked Excel removes unnecessary source columns while retaining aligned values and delivery status', async () => {
+  const removed=['Seal No','POL','POD','BL NO','Status','Weight (ton)','Tare','Gross','IMO','Ocean Vessel','Ocean carrier','OCean BL No','Stock','Forwarder VAT NO','SKK/KFK'];
+  const headers=['Cont. No','Booking No',...removed,'Client','Terminal status'];
+  const values=['MSCU1234567','BOOK1',...removed.map((_,i)=>`removed-${i}`),'Example client','Old status'];
+  const sheet={rows:[headers,values,['','BOOK2',...removed.map(()=>''),'Other client','']]};
+  const workbook=markedWorkbook(sheet,{column:0,start:2},[['MSCU1234567']],0);
+  const readback=new ExcelJS.Workbook(); await readback.xlsx.load(await workbook.xlsx.writeBuffer());
+  const marked=readback.worksheets[0];
+  assert.deepEqual(marked.getRow(1).values.slice(1),['Cont. No','Booking No','Client','Terminal status']);
+  assert.deepEqual(marked.getRow(2).values.slice(1),['MSCU1234567','BOOK1','Example client','Delivered']);
+  assert.equal(marked.getCell('C3').value,'Other client');
+  assert.equal(marked.getCell('D3').value,'No containernumber');
+  assert.equal(marked.getCell('D2').fill.fgColor.argb,'FFDDF1E4');
+  assert.equal(marked.getCell('D3').fill.fgColor.argb,'FFE8EBEF');
+});
 test('legacy Excel import, automatic column selection and row highlighting', async () => {
   const X = require('@e965/xlsx');
   const dir = await fs.mkdtemp(path.join(os.tmpdir(),'checker-legacy-'));
@@ -22,11 +37,11 @@ test('legacy Excel import, automatic column selection and row highlighting', asy
     const data=overview(sheet,selection,[['MSCU1234567']],0);
     assert.equal(data.loadingRows.length,4); assert.equal(data.missingNumbers,1);
     assert.equal(data.bookedTotal,4); assert.equal(data.numberedRows,3); assert.equal(data.awaitingNumbers,1);
-    assert.deepEqual(data.loadingRows.map(r=>r.status),['Cannot match','Delivered','Outstanding','Delivered']);
+    assert.deepEqual(data.loadingRows.map(r=>r.status),['No containernumber','Delivered','Outstanding','Delivered']);
     const output=path.join(dir,'marked.xlsx'); await markedWorkbook(sheet,selection,[['MSCU1234567']],0).xlsx.writeFile(output);
     const readback=new ExcelJS.Workbook(); await readback.xlsx.readFile(output); const marked=readback.worksheets[0];
     assert.equal(marked.getCell('G8').value,'Delivered'); assert.equal(marked.getCell('E8').fill.fgColor.argb,'FFDDF1E4');
-    assert.equal(marked.getCell('G7').value,'Cannot match'); assert.equal(marked.getCell('G9').value,'Outstanding'); assert.equal(marked.getCell('G11').value,null);
+    assert.equal(marked.getCell('G7').value,'No containernumber'); assert.equal(marked.getCell('G9').value,'Outstanding'); assert.equal(marked.getCell('G11').value,null);
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
 });
 test('counts split bills of lading as one container and keeps unnumbered bookings', () => {

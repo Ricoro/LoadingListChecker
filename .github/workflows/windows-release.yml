@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: v0.4.0
+          ref: v0.5.0
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
@@ -26,7 +26,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path release-package
-          Copy-Item 'dist/Loading List Checker 0.4.0.exe' 'release-package/Loading List Checker.exe'
+          Copy-Item 'dist/Loading List Checker 0.5.0.exe' 'release-package/Loading List Checker.exe'
           Copy-Item README.md release-package/README.md
           Compress-Archive -Path release-package/* -DestinationPath Loading-List-Checker-Windows.zip
       - name: Upload release download
@@ -34,9 +34,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          gh release view v0.4.0 --repo Ricoro/LoadingListChecker
+          gh release view v0.5.0 --repo Ricoro/LoadingListChecker
           if ($LASTEXITCODE -ne 0) {
-            gh release create v0.4.0 --repo Ricoro/LoadingListChecker --verify-tag --title 'Loading List Checker v0.4.0' --notes 'Windows x64 portable app. Download and extract the ZIP, then open Loading List Checker.exe. Supports Excel loading and terminal lists, delivered/outstanding highlights and marked Excel export. Files stay local. Unsigned executable; native Windows launch testing remains outstanding. No container lists are included.'
+            gh release create v0.5.0 --repo Ricoro/LoadingListChecker --verify-tag --title 'Loading List Checker v0.5.0' --notes 'Windows x64 portable app. Download and extract the ZIP, then open Loading List Checker.exe. Supports Excel loading and terminal lists, delivered/outstanding highlights and marked Excel export. Files stay local. Unsigned executable; native Windows launch testing remains outstanding. No container lists are included.'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload v0.4.0 Loading-List-Checker-Windows.zip --repo Ricoro/LoadingListChecker --clobber
+          gh release upload v0.5.0 Loading-List-Checker-Windows.zip --repo Ricoro/LoadingListChecker --clobber

@@ -9,17 +9,17 @@ function overview(sheet, selection, quayRows, quayColumn) {
     const container = normalize(values[selection.column]);
     const valid = /^[A-Z]{4}\d{7}$/.test(container);
     if (!valid && !(booking >= 0 && String(values[booking] || '').trim())) return;
-    rows.push({ sourceRow: selection.start + offset, container, booking: values[booking] || '', size: values[size] || '', type: values[type] || '', status: valid ? (terminal.has(container) ? 'Delivered' : 'Outstanding') : 'Cannot match' });
+    rows.push({ sourceRow: selection.start + offset, container, booking: values[booking] || '', size: values[size] || '', type: values[type] || '', status: valid ? (terminal.has(container) ? 'Delivered' : 'Outstanding') : 'No containernumber' });
   });
   const vesselLine = sheet.rows.slice(0, selection.start - 1).find(row => row.some(value => /^M\/V\s/i.test(String(value))));
   const declaredMatch = sheet.rows.flat().map(String).join(' ').match(/TOTAL\s+units\s*:\s*(\d+)/i);
   const declaredTotal = declaredMatch ? Number(declaredMatch[1]) : null;
-  const numberedRows = rows.filter(row => row.status !== 'Cannot match').length;
+  const numberedRows = rows.filter(row => row.status !== 'No containernumber').length;
   const awaitingNumbers = rows.filter(row => !row.container).length;
-  const invalidNumbers = rows.filter(row => row.container && row.status === 'Cannot match').length;
-  const numberedContainers = new Set(rows.filter(row => row.status !== 'Cannot match').map(row => row.container)).size;
+  const invalidNumbers = rows.filter(row => row.container && row.status === 'No containernumber').length;
+  const numberedContainers = new Set(rows.filter(row => row.status !== 'No containernumber').map(row => row.container)).size;
   const countedContainers = numberedContainers + awaitingNumbers + invalidNumbers;
   const additionalBillRows = numberedRows - numberedContainers;
-  return { numberedContainers, countedContainers, additionalBillRows, bookedTotal: declaredTotal ?? countedContainers, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'Cannot match').length };
+  return { numberedContainers, countedContainers, additionalBillRows, bookedTotal: declaredTotal ?? countedContainers, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'No containernumber').length };
 }
 module.exports = { overview };

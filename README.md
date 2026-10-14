@@ -32,10 +32,14 @@ The portable Windows x64 executable is written to `dist/`. Windows builds are un
 
 ## Vessel overview
 
-The supplied system export is detected automatically: loading-list column E, header on row 6, data from row 7; terminal export column C, data from row 2. Selections remain editable. Rows stay in loading-list order with row number, size/type and booking. Delivered rows are green, outstanding rows amber, and booking rows without usable container numbers grey (Cannot match). Counts show unique valid containers; duplicate loading rows remain visible. Save marked Excel exports all loading-sheet values and adds a highlighted Terminal status column. It recreates the worksheet rather than preserving the original print layout, formatting or formulas; the source file remains unchanged.
+The supplied system export is detected automatically: loading-list column E, header on row 6, data from row 7; terminal export column C, data from row 2. Selections remain editable. Rows stay in loading-list order with row number, size/type and booking. Delivered rows are green, outstanding rows amber, and booking rows without usable container numbers grey (No containernumber). Counts show unique valid containers; duplicate loading rows remain visible. Save marked Excel exports all loading-sheet values and adds a highlighted Terminal status column. It recreates the worksheet rather than preserving the original print layout, formatting or formulas; the source file remains unchanged.
 
 ## Booking totals and bills of lading
 
 Each known container number counts once, even if it appears on multiple bill-of-lading rows. All original rows remain visible and are marked in Excel. Container numbers received shows distinct valid numbers. The total booked count uses the sheet's `TOTAL units` value when present; otherwise it counts distinct known containers plus unnumbered booking rows and invalid-number rows requiring review. Awaiting container numbers counts rows with an empty container-number cell; these cannot be deduplicated reliably until a number is provided. Footer and padding rows are excluded.
 
 A warning appears only when the stated total differs from these container counts, not merely because one container has multiple bills of lading. Export uses Save marked Excel; CSV imports remain supported.
+
+## Marked Excel columns
+
+Saved Excel omits Seal No, POL, POD, BL No, the source Status, Weight (including Weight (ton)), Tare, Gross, IMO, Ocean Vessel, Ocean carrier, Ocean BL No, Stock, Forwarder VAT No and SKK/KFK. Matching is case-insensitive and ignores spacing and punctuation in these headers. The generated Terminal status column remains. All bill-of-lading rows and retained column values remain in order. Missing container numbers are labelled No containernumber in the app and Excel.

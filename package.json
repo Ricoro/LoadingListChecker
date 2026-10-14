@@ -1,6 +1,6 @@
 {
   "name": "loading-list-checker",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Compare vessel and quay container lists locally",
   "main": "src/main.js",
   "scripts": {
