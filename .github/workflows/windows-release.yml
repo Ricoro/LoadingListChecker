@@ -1,0 +1,33 @@
+name: Publish Windows app
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/windows-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.2.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run dist:win -- -c.win.signAndEditExecutable=false -c.compression=normal
+      - name: Package portable app
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release-package
+          Copy-Item 'dist/Loading List Checker 0.2.0.exe' 'release-package/Loading List Checker.exe'
+          Copy-Item README.md release-package/README.md
+          Compress-Archive -Path release-package/* -DestinationPath Loading-List-Checker-Windows.zip
+      - name: Upload release download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v0.2.0 Loading-List-Checker-Windows.zip --repo Ricoro/LoadingListChecker --clobber
