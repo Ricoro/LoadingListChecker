@@ -30,13 +30,6 @@ function compareSelections(selections) {
   return { ...compare(vessel.rows, vessel.column, quay.rows, quay.column), ...overview(imports.get('vessel')[selections.vessel.sheet], selections.vessel, quay.rows, quay.column) };
 }
 ipcMain.handle('compare', (_, selections) => compareSelections(selections));
-ipcMain.handle('export', async (_, selections) => {
-  const data = compareSelections(selections);
-  const chosen = await dialog.showSaveDialog(window, { defaultPath: 'container-comparison.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
-  if (chosen.canceled) return false;
-  await fs.writeFile(chosen.filePath, '\uFEFFContainer,Status\r\n' + data.results.map(r => `${r.container},${r.status}`).join('\r\n'), 'utf8');
-  return true;
-});
 ipcMain.handle('export-marked', async (_, selections) => {
   compareSelections(selections);
   const chosen = await dialog.showSaveDialog(window, { defaultPath: 'marked-loading-list.xlsx', filters: [{ name: 'Excel', extensions: ['xlsx'] }] });

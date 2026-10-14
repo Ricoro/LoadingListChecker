@@ -29,10 +29,13 @@ test('legacy Excel import, automatic column selection and row highlighting', asy
     assert.equal(marked.getCell('G7').value,'Cannot match'); assert.equal(marked.getCell('G9').value,'Outstanding'); assert.equal(marked.getCell('G11').value,null);
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
 });
-test('counts unnumbered bookings and preserves a declared-total discrepancy', () => {
+test('counts split bills of lading as one container and keeps unnumbered bookings', () => {
   const sheet={rows:[['No','Size','','Type','Cont. No','Booking No'],[1,'40','','HC','','BOOK1'],[2,'40','','HC','MSCU1234567','BOOK2'],[3,'40','','HC','MSCU1234567','BOOK2'],['Total','','','','TOTAL units: 2'],[],['Footer']]};
   const result=overview(sheet,{column:4,start:2},[['MSCU1234567']],0);
   assert.equal(result.bookedTotal,2); assert.equal(result.countedBookingRows,3);
+  assert.equal(result.countedContainers,2); assert.equal(result.numberedContainers,1); assert.equal(result.additionalBillRows,1);
+  const withoutTotal=overview({rows:sheet.rows.slice(0,4)},{column:4,start:2},[],0);
+  assert.equal(withoutTotal.bookedTotal,2);
   assert.equal(result.numberedRows,2); assert.equal(result.awaitingNumbers,1);
   assert.equal(result.loadingRows.length,3);
   const allMissing=overview({rows:[sheet.rows[0],sheet.rows[1]]},{column:4,start:2},[],0);
@@ -72,7 +75,7 @@ test('desktop import, comparison and export handlers process Excel end to end', 
       sheet.addRow(['Container']); numbers.forEach(number=>sheet.addRow([number]));
       const file = path.join(dir,name+'.xlsx'); await book.xlsx.writeFile(file); inputs.push(file);
     }
-    const output = path.join(dir,'results.csv'), handlers = new Map();
+    const output = path.join(dir,'results.xlsx'), handlers = new Map();
     const electron = { app:{whenReady:()=>({then:()=>{}}),on:()=>{}}, BrowserWindow:class {}, ipcMain:{handle:(name,handler)=>handlers.set(name,handler)},dialog:{showOpenDialog:async()=>({canceled:false,filePaths:[inputs.shift()]}),showSaveDialog:async()=>({canceled:false,filePath:output})} };
     vm.runInNewContext(await fs.readFile(path.join(__dirname,'../src/main.js'),'utf8'), {require:name=>name==='electron'?electron:name==='./import'?require('../src/import'):name==='./compare'?require('../src/compare'):name==='./overview'?require('../src/overview'):name==='./marked-workbook'?require('../src/marked-workbook'):require(name),__dirname:path.join(__dirname,'../src')});
     assert.equal((await handlers.get('import')(null,'vessel')).sheets[0].count,3);
@@ -80,8 +83,11 @@ test('desktop import, comparison and export handlers process Excel end to end', 
     const selections={vessel:{sheet:0,column:0,start:2},quay:{sheet:0,column:0,start:2}};
     const result=handlers.get('compare')(null,selections);
     assert.equal(result.results.filter(r=>r.status==='Delivered').length,1);
-    assert.equal(await handlers.get('export')(null,selections),true);
-    assert.equal(await fs.readFile(output,'utf8'),'\uFEFFContainer,Status\r\nABCD7654321,Outstanding\r\nMSCU1234567,Delivered');
+    assert.equal(handlers.has('export'),false);
+    assert.equal(await handlers.get('export-marked')(null,selections),true);
+    const marked = new ExcelJS.Workbook(); await marked.xlsx.readFile(output);
+    assert.equal(marked.worksheets[0].getCell('B2').value,'Delivered');
+    assert.equal(marked.worksheets[0].getCell('B3').value,'Outstanding');
     assert.throws(()=>handlers.get('compare')(null,{...selections,vessel:{sheet:0,column:0,start:0}}));
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
 });

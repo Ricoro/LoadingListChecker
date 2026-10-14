@@ -17,6 +17,9 @@ function overview(sheet, selection, quayRows, quayColumn) {
   const numberedRows = rows.filter(row => row.status !== 'Cannot match').length;
   const awaitingNumbers = rows.filter(row => !row.container).length;
   const invalidNumbers = rows.filter(row => row.container && row.status === 'Cannot match').length;
-  return { bookedTotal: declaredTotal ?? rows.length, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'Cannot match').length };
+  const numberedContainers = new Set(rows.filter(row => row.status !== 'Cannot match').map(row => row.container)).size;
+  const countedContainers = numberedContainers + awaitingNumbers + invalidNumbers;
+  const additionalBillRows = numberedRows - numberedContainers;
+  return { numberedContainers, countedContainers, additionalBillRows, bookedTotal: declaredTotal ?? countedContainers, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'Cannot match').length };
 }
 module.exports = { overview };

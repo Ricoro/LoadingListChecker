@@ -47,18 +47,18 @@ $('compare').addEventListener('click', async () => {
     if (!(result.countedBookingRows ?? result.vessel.containers)) { $('message').textContent = 'No valid container numbers found in one of the lists. Check the worksheet, column and first data row.'; return; }
     $('vesselName').textContent = result.vesselName || 'Vessel loading list';
     $('total').textContent = result.bookedTotal ?? result.results.length;
-    $('received').textContent = result.numberedRows ?? result.results.length;
+    $('received').textContent = result.numberedContainers ?? result.results.length;
     $('awaiting').textContent = result.awaitingNumbers ?? 0;
-    $('count-warning').textContent = result.declaredTotal !== null && result.declaredTotal !== undefined && result.declaredTotal !== result.countedBookingRows ? `Total mismatch: the sheet states ${result.declaredTotal} containers, but contains ${result.countedBookingRows} booking rows (${result.numberedRows} with numbers, ${result.awaitingNumbers} awaiting numbers${result.invalidNumbers ? ', '+result.invalidNumbers+' with invalid numbers' : ''}). Please check the loading list; no booking rows have been dropped.` : '';
+    $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.awaitingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
      const delivered = result.results.filter(r=>r.status==='Delivered').length;
     $('delivered').textContent = delivered; $('outstanding').textContent = result.results.length-delivered;
-    $('quality').textContent = ['vessel','quay'].map(side=>`${side === 'vessel' ? 'Vessel' : 'Quay'}: ${result[side].duplicates} duplicate rows, ${result[side].invalid} invalid values and ${result[side].blank} blank cells not matched`).join(' · ')+`. ${result.missingNumbers || 0} booking rows await a usable container number and are shown as Cannot match. Container format: 4 letters + 7 digits; check digits are not verified.`;
+    $('quality').textContent = `${result.countedBookingRows} bill-of-lading rows · ${result.numberedRows} rows with container numbers represent ${result.numberedContainers} distinct containers · ${result.awaitingNumbers} rows await container numbers${result.invalidNumbers ? ' · '+result.invalidNumbers+' rows have invalid numbers' : ''}. Repeated container numbers are counted once; all bill-of-lading rows remain in the overview and marked Excel. Check digits are not verified.`;
     $('quayOnly').textContent = `${result.quayOnly.length} quay containers are outside this vessel list and excluded from the results.`;
     $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
   } catch(error) { $('message').textContent = error.message; }
   finally { $('compare').disabled = false; }
 });
 $('filter').addEventListener('change',renderRows); $('search').addEventListener('input',renderRows);
-$('export').addEventListener('click',async () => { try { if(await window.checker.export(selections())) $('message').textContent = 'Results exported successfully.'; } catch(error) { $('message').textContent = error.message; } });
+
 
 $('export-marked').addEventListener('click',async () => { try { if(await window.checker.exportMarked(selections())) $('message').textContent = 'Marked loading list saved. Original file unchanged.'; } catch(error) { $('message').textContent = error.message; } });
