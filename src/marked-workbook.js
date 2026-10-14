@@ -14,13 +14,16 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedCol
     return !excludedHeaders.has(header) && header !== 'terminalstatus';
   });
   const width = keptColumns.length;
-  const exportedContainers = new Set();
+  const headersBooking = headers.findIndex(value => /^booking/i.test(String(value).trim()));
+  const exportedBookings = new Map();
   vesselSheet.rows.forEach((values, index) => {
     const status = statuses.get(index + 1);
     if (status && status !== 'No containernumber') {
       const container = normalize(values[selection.column]);
-      if (exportedContainers.has(container)) return;
-      exportedContainers.add(container);
+      const booking = String(values[headersBooking] ?? '').trim().toUpperCase();
+      const bookings = exportedBookings.get(container) || new Set();
+      if (bookings.has(booking)) return;
+      bookings.add(booking); exportedBookings.set(container, bookings);
     }
     const row = sheet.addRow(keptColumns.map(column => values[column] ?? ''));
     if (index === selection.start - 2) { row.getCell(width + 1).value = 'Terminal status'; row.font = { bold: true }; }

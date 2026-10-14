@@ -20,8 +20,14 @@ function overview(sheet, selection, quayRows, quayColumn, blockedColumn = 4) {
   const awaitingNumbers = rows.filter(row => !row.container).length;
   const invalidNumbers = rows.filter(row => row.container && row.status === 'No containernumber').length;
   const numberedContainers = new Set(rows.filter(row => row.status !== 'No containernumber').map(row => row.container)).size;
+  const containerBookings = new Map();
+  for (const row of rows.filter(row => row.status !== 'No containernumber')) {
+    const bookings = containerBookings.get(row.container) || new Set();
+    bookings.add(String(row.booking).trim().toUpperCase()); containerBookings.set(row.container, bookings);
+  }
+  const bookingConflicts = [...containerBookings].filter(([, bookings]) => bookings.size > 1).map(([container, bookings]) => ({container, bookings:[...bookings]}));
   const countedContainers = numberedContainers + awaitingNumbers + invalidNumbers;
   const additionalBillRows = numberedRows - numberedContainers;
-  return { numberedContainers, countedContainers, additionalBillRows, bookedTotal: declaredTotal ?? countedContainers, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'No containernumber').length };
+  return { bookingConflicts, numberedContainers, countedContainers, additionalBillRows, bookedTotal: declaredTotal ?? countedContainers, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'No containernumber').length };
 }
 module.exports = { overview };

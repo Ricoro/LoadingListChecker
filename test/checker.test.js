@@ -137,14 +137,19 @@ test('desktop import, comparison and export handlers process Excel end to end', 
   } finally { await fs.rm(dir,{recursive:true,force:true}); }
 });
 
-test('marked Excel exports normalized container numbers once while keeping all unnumbered bookings and source details', async () => {
-  const source={rows:[['Loading list'],['Cont. No','Booking No','Client'],['MSCU1234567','BOOK1','First client'],[' mscu-1234567 ','BOOK2','Second client'],['','BOOK3','Blank one'],['','BOOK3','Blank two'],['ABCD7654321','BOOK4','Other client'],['TOTAL units: 4']]};
+test('Excel removes duplicates within a booking, preserves other bookings, and reports conflicts', async () => {
+  const source={rows:[['Loading list'],['Cont. No','Booking No','Client'],['MSCU1234567','BOOK1','First client'],[' mscu-1234567 ',' book1 ','Duplicate client'],['MSCU1234567','BOOK2','Second client'],['','BOOK3','Blank one'],['','BOOK3','Blank two'],['ABCD7654321','BOOK4','Other client'],['TOTAL units: 4']]};
+  const data=overview(source,{column:0,start:3},[['MSCU1234567']],0,-1);
+  assert.deepEqual(data.bookingConflicts,[{container:'MSCU1234567',bookings:['BOOK1','BOOK2']}]);
+  assert.equal(data.numberedContainers,2);assert.equal(data.awaitingNumbers,2);
   const bytes=await markedWorkbook(source,{column:0,start:3},[['MSCU1234567']],0,-1).xlsx.writeBuffer();
   const book=new ExcelJS.Workbook();await book.xlsx.load(bytes);const sheet=book.worksheets[0];
-  assert.equal(sheet.rowCount,7);
+  assert.equal(sheet.rowCount,8);
   assert.deepEqual(sheet.getRow(3).values.slice(1),['MSCU1234567','BOOK1','First client','Delivered']);
-  assert.equal(sheet.getCell('D4').value,'No containernumber');assert.equal(sheet.getCell('C4').value,'Blank one');
-  assert.equal(sheet.getCell('D5').value,'No containernumber');assert.equal(sheet.getCell('C5').value,'Blank two');
-  assert.equal(sheet.getCell('D6').value,'Outstanding');assert.equal(sheet.getCell('A7').value,'TOTAL units: 4');
-  assert.equal(source.rows.length,8);
+  assert.deepEqual(sheet.getRow(4).values.slice(1),['MSCU1234567','BOOK2','Second client','Delivered']);
+  assert.equal(sheet.getCell('D5').value,'No containernumber');assert.equal(sheet.getCell('C5').value,'Blank one');
+  assert.equal(sheet.getCell('D6').value,'No containernumber');assert.equal(sheet.getCell('C6').value,'Blank two');
+  assert.equal(sheet.getCell('D7').value,'Outstanding');assert.equal(sheet.getCell('A8').value,'TOTAL units: 4');
+  assert.equal(source.rows.length,9);
+  assert.deepEqual(overview({rows:source.rows.slice(0,4)},{column:0,start:3},[],0,-1).bookingConflicts,[]);
 });
