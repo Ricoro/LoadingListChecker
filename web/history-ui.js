@@ -6,6 +6,7 @@ function setupHistory({config,snapshot,open}) {
   const title=document.createElement('h2');title.textContent='Previous comparisons';host.append(title);
   const message=document.createElement('p'), list=document.createElement('div');host.append(message);
   if (!config.tenantId || !config.clientId) {message.textContent='Shared history needs one-time Microsoft 365 setup by your IT team. Comparisons currently stay on this PC until you download them.';return;}
+  document.querySelector('.local').textContent='Private SharePoint history';
   const auth=new MicrosoftAuth(config),store=new SharePointStore({config,auth});
   let account, pending, revision=0;
   function button(label,action) {const b=document.createElement('button');b.textContent=label;b.addEventListener('click',async()=>{b.disabled=true;try{await action();}catch(e){message.textContent=e.message;}finally{b.disabled=false;}});host.append(b);return b;}
