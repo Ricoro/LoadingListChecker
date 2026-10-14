@@ -1,106 +1,19 @@
-const state = { vessel: null, quay: null, result: null };
-const $ = id => document.getElementById(id);
-function element(tag, text) { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; }
-function invalidate() { state.result = null; $('results').hidden = true; $('compare').disabled = !(state.vessel && state.quay); $('message').textContent = ''; }
-function selections() {
-  return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet').value), column: Number($(side+'-column').value), start: Number($(side+'-start').value), ...(side === 'quay' ? { blockedColumn: Number($('quay-blocked').value) } : {}) }]));
-}
-function configure(side) {
-  const data = state[side], host = $(side).querySelector('.configuration');
-  host.replaceChildren(); host.hidden = false;
-  host.append(element('div', data.name)); host.firstChild.className = 'filename';
-  const sheetLabel = element('label', 'Worksheet'); const sheets = element('select'); sheets.id = side+'-sheet';
-  data.sheets.forEach((s,i) => { const option = element('option', `${s.name} (${s.count} rows)`); option.value = i; sheets.append(option); });
-  sheetLabel.append(sheets); host.append(sheetLabel);
-  const columnLabel = element('label','Container-number column'); const columns = element('select'); columns.id = side+'-column'; columnLabel.append(columns); host.append(columnLabel);
-  let blocked;
-  if (side === 'quay') { const label = element('label', 'Blocked column'); blocked = element('select'); blocked.id = 'quay-blocked'; label.append(blocked); host.append(label); blocked.addEventListener('change', invalidate); }
-  const startLabel = element('label','First data row'); const start = element('input'); start.type = 'number'; start.min = '1'; start.value = '2'; start.id = side+'-start'; startLabel.append(start); host.append(startLabel);
-  const preview = element('div'); preview.className = 'preview'; host.append(preview);
-  function populate() {
-    const sheet = data.sheets[Number(sheets.value)]; columns.replaceChildren();
-    const first = sheet.preview[0] || [];
-    for (let i=0;i<sheet.columns;i++) { const option = element('option', `Column ${i+1}${first[i] ? ' — '+first[i] : ''}`); option.value = i; columns.append(option); }
-    if (blocked) { blocked.replaceChildren(); const none = element('option', 'No blocked column'); none.value = '-1'; blocked.append(none); for (let i=0;i<sheet.columns;i++) { const option = element('option', `Column ${i+1}${first[i] ? ' — '+first[i] : ''}`); option.value = i; blocked.append(option); } blocked.value = String(sheet.suggestedBlockedColumn ?? -1); }
-    const guessed = first.findIndex(v => /container|cntr|unit\s*(no|number)/i.test(String(v)));
-    columns.value = String(sheet.suggested?.column ?? Math.max(0,guessed));
-    start.value = first.some(v => /^[A-Za-z]{4}[\s-]*\d{7}$/.test(String(v).trim())) ? '1' : '2';
-    if (sheet.suggested) start.value = String(sheet.suggested.start);
-    preview.replaceChildren(); const table = element('table');
-    sheet.preview.slice(0,5).forEach((row,index) => { const tr = element('tr'); tr.append(element('td',String(index+1))); row.forEach(value => tr.append(element('td',value))); table.append(tr); }); preview.append(table);
-    invalidate();
-  }
-  sheets.addEventListener('change',populate); columns.addEventListener('change',invalidate); start.addEventListener('input',invalidate); populate();
-}
-document.querySelectorAll('.import').forEach(button => button.addEventListener('click', async () => {
-  button.disabled = true; $('message').textContent = '';
-  try { const side = button.dataset.side; const data = await window.checker.import(side); if(data) { state[side] = data; configure(side); } }
-  catch(error) { $('message').textContent = error.message; }
-  finally { button.disabled = false; }
-}));
-function renderRows() {
-  const selected = (state.result.loadingRows || state.result.results).filter(r => ($('filter').value === 'all' || r.status === $('filter').value) && r.container.includes($('search').value.toUpperCase().replace(/[\s-]/g,'')));
-  $('rows').replaceChildren(); selected.slice(0,2000).forEach(r => { const tr = element('tr'); tr.className = r.status.toLowerCase().replace(/ /g,'-'); tr.append(element('td',String(r.sourceRow ?? '')),element('td',r.container || 'Not assigned'),element('td',`${r.size || ''} ${r.type || ''}`.trim()),element('td',r.booking || ''));  const td = element('td'), badge = element('span',r.status); badge.className = 'badge'+(r.status==='Delivered' ? ' delivered' : r.status==='Blocked' ? ' blocked' : ''); td.append(badge); tr.append(td); $('rows').append(tr); });
-  $('shown').textContent = `${selected.length} loading-list rows${selected.length>2000 ? ' · Showing the first 2,000; marked Excel includes the full loading list.' : ''}`;
-}
-$('compare').addEventListener('click', async () => {
-  $('compare').disabled = true; $('message').textContent = '';
-  try {
-    const result = await window.checker.compare(selections()); state.result = result;
-    if (!(result.countedBookingRows ?? result.vessel.containers)) { $('message').textContent = 'No valid container numbers found in one of the lists. Check the worksheet, column and first data row.'; return; }
-    $('vesselName').textContent = result.vesselName || 'Vessel loading list';
-    $('total').textContent = result.bookedTotal ?? result.results.length;
-    $('received').textContent = result.numberedContainers ?? result.results.length;
-    $('awaiting').textContent = result.awaitingNumbers ?? 0;
-    $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.awaitingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
-     const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
-    $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
-    $('delivered').textContent = delivered; $('outstanding').textContent = result.results.length-delivered;
-    $('quality').textContent = `${result.countedBookingRows} bill-of-lading rows · ${result.numberedRows} rows with container numbers represent ${result.numberedContainers} distinct containers · ${result.awaitingNumbers} rows await container numbers${result.invalidNumbers ? ' · '+result.invalidNumbers+' rows have invalid numbers' : ''}. Repeated container numbers are counted once; all bill-of-lading rows remain in the overview and marked Excel. Check digits are not verified.`;
-    $('quayOnly').textContent = `${result.quayOnly.length} quay containers are outside this vessel list and excluded from the results.`;
-    $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
-  } catch(error) { $('message').textContent = error.message; }
-  finally { $('compare').disabled = false; }
-});
-$('filter').addEventListener('change',renderRows); $('search').addEventListener('input',renderRows);
+# Loading List Checker
 
+Browser portal: https://ricoro.github.io/LoadingListChecker/
 
-$('export-marked').addEventListener('click',async () => { try { if(await window.checker.exportMarked(selections())) $('message').textContent = 'Marked loading list saved. Original file unchanged.'; } catch(error) { $('message').textContent = error.message; } });
+Import the vessel loading list and terminal list, then compare container numbers. Delivered containers are marked; blocked containers appear deep red. Duplicate numbers on separate bills of lading count once, while all booking rows remain visible, including bookings without container numbers.
 
-if (window.checker.updates) {
-  const api = window.checker.updates;
-  let updateState;
-  function renderUpdate(state) {
-    if (!state) return;
-    updateState = state;
-    $('update-settings').hidden = state.phase === 'disabled';
-    $('update-current').textContent = `Installed version: ${state.version}`;
-    $('update-settings-message').textContent = state.message;
-    $('update-check').disabled = ['checking','downloading','ready'].includes(state.phase);
-    const labels = { available: [`Update ${state.latestVersion} available`,'Download update'], downloading: ['Downloading update',null], ready: ['Update ready','Restart and update'], error: ['Update unavailable','Retry'] };
-    const label = labels[state.phase];
-    $('update-banner').hidden = !label;
-    if (!label) return;
-    $('update-title').textContent = label[0];
-    $('update-message').textContent = state.message;
-    $('update-action').hidden = !label[1];
-    $('update-action').textContent = label[1] || '';
-    $('update-progress').hidden = state.phase !== 'downloading';
-    $('update-progress').value = state.progress || 0;
-  }
-  async function action(operation) {
-    try { const state = await operation(); if (state && typeof state === 'object') renderUpdate(state); }
-    catch { $('update-settings').open = true; $('update-settings-message').textContent = 'Could not complete this action. Check your internet connection and try again.'; }
-  }
-  api.onState(renderUpdate);
-  api.get().then(renderUpdate).catch(() => {});
-  $('update-later').addEventListener('click', () => { $('update-banner').hidden = true; });
-  $('update-action').addEventListener('click', () => {
-    if (updateState?.phase === 'available') action(() => api.download());
-    else if (updateState?.phase === 'ready') action(() => api.install());
-    else action(() => api.check());
-  });
-  $('update-check').addEventListener('click', () => action(() => api.check()));
-}
+**Save as Excel** downloads the shortened marked loading list. **Mail** downloads an Outlook draft with that Excel attached; add recipients and send in Outlook.
 
-if (window.checker.emailMarked) $('email-marked').addEventListener('click', async () => { const button = $('email-marked'); button.disabled = true; try { if (await window.checker.emailMarked(selections())) $('message').textContent = 'Mail draft downloaded with the marked Excel attached. Open it in Outlook, add recipients and send. If it opens in reading mode, choose Forward.'; } catch (error) { $('message').textContent = error.message; } finally { button.disabled = false; } });
+Shared, timestamped comparisons use Microsoft 365 sign-in and a private SharePoint folder. Until the organisation completes the [Microsoft setup](docs/sharepoint-setup.md), comparisons remain local and shared history is unavailable. No customer spreadsheets are included in the portal.
+
+## Development
+
+```sh
+npm ci
+npm test
+npm run build:web
+```
+
+The browser output is `dist/web`. GitHub Actions publishes it to Pages. The Electron desktop application is also retained in the source repository.

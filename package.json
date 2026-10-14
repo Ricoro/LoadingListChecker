@@ -16,6 +16,7 @@
     "exceljs": "4.4.0"
   },
   "devDependencies": {
+    "@azure/msal-browser": "4.25.0",
     "electron": "39.8.3",
     "electron-builder": "26.0.12",
     "esbuild": "0.28.2"

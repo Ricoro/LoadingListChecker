@@ -1,9 +1,9 @@
 const state = { vessel: null, quay: null, result: null };
 const $ = id => document.getElementById(id);
 function element(tag, text) { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; }
-function invalidate() { state.result = null; $('results').hidden = true; $('compare').disabled = !(state.vessel && state.quay); $('message').textContent = ''; }
+function invalidate() { window.checker.invalidate?.(); document.dispatchEvent(new Event('comparison-invalidated')); state.result = null; $('results').hidden = true; $('compare').disabled = !(state.vessel && state.quay); $('message').textContent = ''; }
 function selections() {
-  return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet').value), column: Number($(side+'-column').value), start: Number($(side+'-start').value), ...(side === 'quay' ? { blockedColumn: Number($('quay-blocked').value) } : {}) }]));
+  return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet')?.value), column: Number($(side+'-column')?.value), start: Number($(side+'-start')?.value), ...(side === 'quay' ? { blockedColumn: Number($('quay-blocked')?.value) } : {}) }]));
 }
 function configure(side) {
   const data = state[side], host = $(side).querySelector('.configuration');
@@ -43,10 +43,7 @@ function renderRows() {
   $('rows').replaceChildren(); selected.slice(0,2000).forEach(r => { const tr = element('tr'); tr.className = r.status.toLowerCase().replace(/ /g,'-'); tr.append(element('td',String(r.sourceRow ?? '')),element('td',r.container || 'Not assigned'),element('td',`${r.size || ''} ${r.type || ''}`.trim()),element('td',r.booking || ''));  const td = element('td'), badge = element('span',r.status); badge.className = 'badge'+(r.status==='Delivered' ? ' delivered' : r.status==='Blocked' ? ' blocked' : ''); td.append(badge); tr.append(td); $('rows').append(tr); });
   $('shown').textContent = `${selected.length} loading-list rows${selected.length>2000 ? ' · Showing the first 2,000; marked Excel includes the full loading list.' : ''}`;
 }
-$('compare').addEventListener('click', async () => {
-  $('compare').disabled = true; $('message').textContent = '';
-  try {
-    const result = await window.checker.compare(selections()); state.result = result;
+function showResult(result) { state.result = result;
     if (!(result.countedBookingRows ?? result.vessel.containers)) { $('message').textContent = 'No valid container numbers found in one of the lists. Check the worksheet, column and first data row.'; return; }
     $('vesselName').textContent = result.vesselName || 'Vessel loading list';
     $('total').textContent = result.bookedTotal ?? result.results.length;
@@ -57,8 +54,16 @@ $('compare').addEventListener('click', async () => {
     $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
     $('delivered').textContent = delivered; $('outstanding').textContent = result.results.length-delivered;
     $('quality').textContent = `${result.countedBookingRows} bill-of-lading rows · ${result.numberedRows} rows with container numbers represent ${result.numberedContainers} distinct containers · ${result.awaitingNumbers} rows await container numbers${result.invalidNumbers ? ' · '+result.invalidNumbers+' rows have invalid numbers' : ''}. Repeated container numbers are counted once; all bill-of-lading rows remain in the overview and marked Excel. Check digits are not verified.`;
-    $('quayOnly').textContent = `${result.quayOnly.length} quay containers are outside this vessel list and excluded from the results.`;
+    $('quayOnly').textContent = `${(result.quayOnlyCount ?? result.quayOnly.length)} quay containers are outside this vessel list and excluded from the results.`;
     $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
+}
+window.checker.showResult = showResult;
+$('compare').addEventListener('click', async () => {
+  $('compare').disabled = true; $('message').textContent = '';
+  try {
+    const result = await window.checker.compare(selections()); state.result = result;
+    showResult(result);
+    document.dispatchEvent(new Event('comparison-complete'));
   } catch(error) { $('message').textContent = error.message; }
   finally { $('compare').disabled = false; }
 });

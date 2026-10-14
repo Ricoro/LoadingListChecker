@@ -35,6 +35,12 @@ jobs:
         run: npm ci --no-audit --no-fund
       - run: npm test
       - run: npm run build:web
+        env:
+          M365_TENANT_ID: ${{ vars.M365_TENANT_ID }}
+          M365_CLIENT_ID: ${{ vars.M365_CLIENT_ID }}
+          SHAREPOINT_SITE_URL: ${{ vars.SHAREPOINT_SITE_URL }}
+          SHAREPOINT_HISTORY_FOLDER: ${{ vars.SHAREPOINT_HISTORY_FOLDER }}
+          SHAREPOINT_DRIVE_ID: ${{ vars.SHAREPOINT_DRIVE_ID }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

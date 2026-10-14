@@ -5,7 +5,16 @@ const { overview } = require('../src/overview');
 const { suggestSelection, suggestBlockedColumn } = require('../src/selection');
 const { markedWorkbook } = require('../src/marked-workbook');
 const { createEmailDraft } = require('../src/email-draft');
-const imports = new Map();
+const { makeRecord, decodeBytes, recordMail } = require('./history-record');
+const imports = new Map(), sources = {};
+let current, opened;
+async function snapshot() {
+  if (opened) return opened;
+  if (!current) throw new Error('Compare the lists first.');
+  const captured = current;
+  if (!captured.record) captured.record = makeRecord({ id:captured.id, result:captured.result, sources:{...captured.sources}, excelBytes:await markedWorkbook(captured.v.sheet,captured.v.selection,captured.q.rows,captured.q.column,captured.q.blockedColumn).xlsx.writeBuffer() });
+  return captured.record;
+}
 function downloadFile(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a'); link.href = url; link.download = filename;
@@ -43,31 +52,30 @@ function selected(selections, side) {
   return { sheet, selection, rows: sheet.rows.slice(selection.start - 1), column: selection.column, blockedColumn: selection.blockedColumn ?? suggestBlockedColumn(sheet.rows) };
 }
 window.checker = {
+  invalidate() { current=null; opened=null; },
   async import(side) {
     if (!['vessel', 'quay'].includes(side)) throw new Error('Invalid list.');
     const file = await chooseFile();
     if (!file) return null;
     const name = file.name, sheets = await readBrowserFile(file);
-    imports.set(side, sheets);
+    imports.set(side, sheets); sources[side] = name; opened = null; current = null;
     return { name, sheets: sheets.map(sheet => ({ name: sheet.name, count: sheet.rows.length, suggested: suggestSelection(sheet.rows, side), suggestedBlockedColumn: suggestBlockedColumn(sheet.rows), preview: sheet.rows.slice(0, 20), columns: sheet.rows.reduce((width, row) => Math.max(width, row.length), 0) })) };
   },
   async compare(selections) {
     const v = selected(selections, 'vessel'), q = selected(selections, 'quay');
-    return { ...compare(v.rows, v.column, q.rows, q.column, q.blockedColumn), ...overview(v.sheet, v.selection, q.rows, q.column, q.blockedColumn) };
+    const result = { ...compare(v.rows, v.column, q.rows, q.column, q.blockedColumn), ...overview(v.sheet, v.selection, q.rows, q.column, q.blockedColumn) };
+    opened = null; current = {id:crypto.randomUUID(), result, v, q, sources:{...sources}}; return result;
   },
   async exportMarked(selections) {
-    const v = selected(selections, 'vessel'), q = selected(selections, 'quay');
-    const buffer = await markedWorkbook(v.sheet, v.selection, q.rows, q.column, q.blockedColumn).xlsx.writeBuffer();
+    const buffer = decodeBytes((await snapshot()).excelBase64);
     downloadFile(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'marked-loading-list.xlsx');
     return true;
   },
   async emailMarked(selections) {
-    const v = selected(selections, 'vessel'), q = selected(selections, 'quay');
-    const data = await this.compare(selections);
-    const bytes = await markedWorkbook(v.sheet, v.selection, q.rows, q.column, q.blockedColumn).xlsx.writeBuffer();
-    const eml = createEmailDraft({ workbookBytes: bytes, vesselName: data.vesselName, summary: { ...data, onTerminal: data.results.filter(row => ['Delivered','Blocked'].includes(row.status)).length, outstanding: data.results.filter(row => row.status === 'Outstanding').length } });
+    const eml = recordMail(await snapshot());
     downloadFile(new Blob([eml], { type: 'message/rfc822' }), 'loading-list-mail.eml');
     return true;
   }
 };
 require('../src/renderer');
+require('./history-ui').setupHistory({config:SHARED_HISTORY_CONFIG, snapshot, open:record=>{opened=record;current=null;window.checker.showResult(record.result);}});
