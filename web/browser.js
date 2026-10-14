@@ -5,23 +5,6 @@ const { overview } = require('../src/overview');
 const { suggestSelection } = require('../src/selection');
 const { markedWorkbook } = require('../src/marked-workbook');
 const imports = new Map();
-let sampleMode = false;
-const sample = {
-  vessel: [{ name: 'Demo vessel', rows: [
-    ['Loading List · fictional demonstration'], [], ['Vessel', '', '', '', 'M/V DEMO · sample data'], [], [],
-    ['No', 'Size', '', 'Type', 'Cont. No', 'Booking No', 'Seal No', 'Owner', 'POL', 'POD'],
-    [1, "40'", '', 'HC', 'MSCU1234567', 'DEMO-001', '', 'DEMO', '', ''],
-    [2, "20'", '', 'DV', 'ABCD7654321', 'DEMO-002', '', 'DEMO', '', ''],
-    [3, "40'", '', 'HC', 'MSCU1234567', 'DEMO-001', '', 'DEMO', '', ''],
-    [4, "40'", '', 'HC', '', 'DEMO-003', '', 'DEMO', '', ''],
-    [5, "20'", '', 'DV', 'TCLU7654321', 'DEMO-004', '', 'DEMO', '', ''],
-    ['', '', '', '', 'TOTAL units: 4']
-  ] }],
-  quay: [{ name: 'Demo terminal', rows: [
-    ['Group', 'Sort', 'Unit Id'], ['Containers', 'Container', 'MSCU1234567'],
-    ['Containers', 'Container', 'ABCD7654321'], ['Containers', 'Container', 'ZZZZ1234567']
-  ] }]
-};
 function chooseFile() {
   return new Promise(resolve => {
     const input = document.createElement('input');
@@ -55,9 +38,9 @@ function selected(selections, side) {
 window.checker = {
   async import(side) {
     if (!['vessel', 'quay'].includes(side)) throw new Error('Invalid list.');
-    let name, sheets;
-    if (sampleMode) { name = `${side}-sample.xlsx · fictional data`; sheets = sample[side]; }
-    else { const file = await chooseFile(); if (!file) return null; name = file.name; sheets = await readBrowserFile(file); }
+    const file = await chooseFile();
+    if (!file) return null;
+    const name = file.name, sheets = await readBrowserFile(file);
     imports.set(side, sheets);
     return { name, sheets: sheets.map(sheet => ({ name: sheet.name, count: sheet.rows.length, suggested: suggestSelection(sheet.rows, side), preview: sheet.rows.slice(0, 20), columns: sheet.rows.reduce((width, row) => Math.max(width, row.length), 0) })) };
   },
@@ -76,14 +59,3 @@ window.checker = {
   }
 };
 require('../src/renderer');
-document.getElementById('try-sample').addEventListener('click', async event => {
-  event.target.disabled = true;
-  try {
-    sampleMode = true;
-    for (const side of ['vessel', 'quay']) {
-      document.querySelector(`.import[data-side="${side}"]`).click();
-      await new Promise(resolve => setTimeout(resolve, 0));
-    }
-    document.getElementById('compare').click();
-  } finally { sampleMode = false; event.target.disabled = false; }
-});
