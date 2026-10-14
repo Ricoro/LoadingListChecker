@@ -28,7 +28,7 @@ npm start
 npm run dist:win
 ```
 
-The Windows x64 installer is written to `dist/`. Windows builds are unsigned; production distribution should use your organization's code-signing certificate. Building on Windows is recommended. Linux cross-builds need Wine for Windows resource editing, or can disable resource editing with `npm run dist:win -- -c.win.signAndEditExecutable=false` (the application still runs but executable branding is limited).
+The Windows x64 installer is written to `dist/`. Windows builds are unsigned; production distribution should use your organization's code-signing certificate. Build NSIS installers on Windows (the release workflow does this). Linux NSIS builds require Wine even when executable resource editing is disabled. To prepare only the unpacked Windows app on Linux, run `./node_modules/.bin/electron-builder --win dir --x64 -c.win.signAndEditExecutable=false --publish never`.
 
 ## Vessel overview
 
