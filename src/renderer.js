@@ -6,9 +6,12 @@ function selections() {
   return Object.fromEntries(['vessel','quay'].map(side => [side, { sheet: Number($(side+'-sheet')?.value), column: Number($(side+'-column')?.value), start: Number($(side+'-start')?.value), ...(side === 'quay' ? { blockedColumn: Number($('quay-blocked')?.value) } : {}) }]));
 }
 function configure(side) {
-  const data = state[side], host = $(side).querySelector('.configuration');
+  const data = state[side], container = $(side).querySelector('.configuration');
+  container.replaceChildren(); container.hidden = false;
+  const filename = element('div', data.name); filename.className = 'filename'; container.append(filename);
+  const details = element('details'); details.className = 'import-settings'; details.append(element('summary', 'Worksheet settings and preview'));
+  const host = element('div'); details.append(host); container.append(details);
   host.replaceChildren(); host.hidden = false;
-  host.append(element('div', data.name)); host.firstChild.className = 'filename';
   const sheetLabel = element('label', 'Worksheet'); const sheets = element('select'); sheets.id = side+'-sheet';
   data.sheets.forEach((s,i) => { const option = element('option', `${s.name} (${s.count} rows)`); option.value = i; sheets.append(option); });
   sheetLabel.append(sheets); host.append(sheetLabel);
@@ -50,13 +53,16 @@ function showResult(result) { state.result = result;
     $('vesselName').textContent = result.vesselName || 'Vessel loading list';
     $('total').textContent = result.bookedTotal ?? result.results.length;
     $('received').textContent = result.numberedContainers ?? result.results.length;
-    $('awaiting').textContent = result.awaitingNumbers ?? 0;
-    $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.awaitingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
+    $('awaiting').textContent = (result.bookedTotal ?? result.results.length) - (result.numberedContainers ?? result.results.length);
+    $('booked-teu').textContent = result.bookedTeu ?? 'Unavailable';
+    $('terminal-teu').textContent = result.terminalTeu ?? 'Unavailable';
+    $('teu-warning').textContent = result.bookedTeu == null || result.terminalTeu == null ? 'TEU total unavailable: check the container sizes or the loading-list TEU total. 20 ft = 1 TEU; 40/45 ft = 2 TEU.' : '';
+    $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.blankBookingRows ?? result.missingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
      const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
     $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
     $('delivered').textContent = delivered;
-    $('quality').textContent = 'Repeated container numbers count once. On terminal includes blocked containers. The overview keeps all bill-of-lading rows; Excel removes repeats within the same booking and keeps bookings awaiting numbers.';
-    $('quayOnly').textContent = `${(result.quayOnlyCount ?? result.quayOnly.length)} quay containers are outside this vessel list and excluded from the results.`;
+    $('quality').textContent = 'Awaiting container numbers = total booked containers − container numbers received. Repeated container numbers count once. On terminal includes blocked containers. The overview keeps all bill-of-lading rows; Excel removes repeats within the same booking and keeps bookings awaiting numbers.';
+    $('quayOnly').textContent = `${(result.quayOnlyCount ?? result.quayOnly.length)} terminal containers are outside this vessel list and excluded from the results.`;
     $('filter').value = 'all'; $('search').value = ''; $('results').hidden = false; renderRows();
 }
 window.checker.showResult = showResult;

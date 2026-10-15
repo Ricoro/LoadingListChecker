@@ -16,3 +16,8 @@
 #rows tr.blocked{background:#8b1e2d;color:white;font-weight:600}.badge.blocked{background:white;color:#8b1e2d;font-weight:700}#blocked{color:#8b1e2d}
 
 #booking-warning{font-size:12px}
+
+#count-warning:not(:empty),#booking-warning:not(:empty),#teu-warning:not(:empty){padding:12px 16px;background:#fff0f0;border:1px solid #e6aaaa;border-radius:8px;color:#a51d2d}
+#teu-warning{font-size:12px}#message{color:#a51d2d}
+.teu-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.import-settings{margin-top:12px}.import-settings summary{cursor:pointer;font-weight:600;color:#176d76;padding:8px 0}.import-settings summary:focus-visible{outline:3px solid #79bfc7;outline-offset:2px}

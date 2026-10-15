@@ -66,7 +66,7 @@ test('legacy Excel import, automatic column selection and row highlighting', asy
     assert.deepEqual(suggestSelection([['Group','Sort','Unit Id'],['Containers','Container','MSCU1234567']],'quay'),{column:2,start:2});
     const data=overview(sheet,selection,[['MSCU1234567']],0);
     assert.equal(data.loadingRows.length,4); assert.equal(data.missingNumbers,1);
-    assert.equal(data.bookedTotal,4); assert.equal(data.numberedRows,3); assert.equal(data.awaitingNumbers,1);
+    assert.equal(data.bookedTotal,4); assert.equal(data.numberedRows,3); assert.equal(data.awaitingNumbers,2); assert.equal(data.blankBookingRows,1);
     assert.deepEqual(data.loadingRows.map(r=>r.status),['No containernumber','Delivered','Outstanding','Delivered']);
     const output=path.join(dir,'marked.xlsx'); await markedWorkbook(sheet,selection,[['MSCU1234567']],0).xlsx.writeFile(output);
     const readback=new ExcelJS.Workbook(); await readback.xlsx.readFile(output); const marked=readback.worksheets[0];
@@ -152,4 +152,16 @@ test('Excel removes duplicates within a booking, preserves other bookings, and r
   assert.equal(sheet.getCell('D7').value,'Outstanding');assert.equal(sheet.getCell('A8').value,'TOTAL units: 4');
   assert.equal(source.rows.length,9);
   assert.deepEqual(overview({rows:source.rows.slice(0,4)},{column:0,start:3},[],0,-1).bookingConflicts,[]);
+});
+
+test('awaiting uses booked minus unique received; TEU includes blocked and deduplicates split bills', () => {
+  const sheet={rows:[['Size','','Cont. No','Booking No'],["20'",'','MSCU1234567','A'],["20'",'','MSCU1234567','A'],['',"45'",'ABCD7654321','B'],["40'",'','CMAU1234567','C'],["40'",'','','D'],['TOTAL units: 6 TOTAL TEUs: 11']]};
+  const result=overview(sheet,{column:2,start:2},[['MSCU1234567','Yes'],['MSCU1234567','Yes'],['ABCD7654321','No'],['OTHER1234567','No']],0,1);
+  assert.equal(result.numberedContainers,3);assert.equal(result.awaitingNumbers,3);assert.equal(result.blankBookingRows,1);
+  assert.equal(result.bookedTeu,11);assert.equal(result.terminalTeu,3);
+  assert.equal(result.loadingRows[2].size,"45'");
+  const fallback=overview({rows:sheet.rows.slice(0,-1)},{column:2,start:2},[],0,-1);
+  assert.equal(fallback.bookedTeu,7);assert.equal(fallback.terminalTeu,0);
+  const unknown=overview({rows:[sheet.rows[0],['','','MSCU1234567','A']]},{column:2,start:2},[['MSCU1234567']],0,-1);
+  assert.equal(unknown.bookedTeu,null);assert.equal(unknown.terminalTeu,null);
 });
