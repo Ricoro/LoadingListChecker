@@ -29,8 +29,15 @@ test('blocked terminal containers override delivered and export once in deep red
 test('mail draft contains a valid marked Excel attachment and cannot inject headers', async () => {
   const { createEmailDraft } = require('../src/email-draft');
   const bytes = await markedWorkbook({rows:[['Cont. No','Booking No'],['MSCU1234567','BOOK1']]},{column:0,start:2},[['MSCU1234567']],0,-1).xlsx.writeBuffer();
-  const eml = createEmailDraft({workbookBytes:bytes,vesselName:'Vessel Å\r\nBcc: unwanted@example.test',summary:{bookedTotal:1}});
+  const eml = createEmailDraft({workbookBytes:bytes,vesselName:'Vessel Å\r\nBcc: unwanted@example.test',summary:{bookedTotal:1,bookedTeu:2,onTerminal:1,terminalTeu:2,outstanding:0},createdAt:new Date('2026-10-15T12:34:00Z')});
   assert.ok(eml.startsWith('X-Unsent: 1\r\n'));
+  const subject = eml.match(/Subject: ([\s\S]*?)\r\nContent-Type:/)[1].replace(/=\?UTF-8\?B\?([^?]+)\?=/g,(_,text)=>Buffer.from(text,'base64').toString('utf8')).replace(/\r\n /g,'');
+  assert.match(subject,/15\/10\/2026, 14:34 CEST/);
+  const body = Buffer.from(eml.split('Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n')[1].split('\r\n\r\n')[0].replace(/\r\n/g,''),'base64').toString('utf8');
+  assert.match(body,/Total booked containers: 1\r\nTotal TEU booked: 2/);
+  assert.match(body,/On terminal: 1\r\nTotal TEU on terminal: 2/);
+  assert.match(body,/Containers not terminal: 0/);assert.ok(!body.includes('Numbered containers outstanding'));
+
   assert.ok(!eml.includes('\r\nBcc:'));
   assert.match(eml,/filename="marked-loading-list.xlsx"/);
   const attachment = eml.split('Content-Disposition: attachment; filename="marked-loading-list.xlsx"')[1].split('\r\n\r\n')[1].split('\r\n\r\n')[0];

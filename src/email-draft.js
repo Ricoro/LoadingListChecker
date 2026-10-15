@@ -15,12 +15,13 @@ function subjectHeader(value) {
   if (chunk) chunks.push(chunk);
   return chunks.map(text => `=?UTF-8?B?${base64(encoder.encode(text))}?=`).join('\r\n ');
 }
-function createEmailDraft({ workbookBytes, vesselName = '', summary = {} }) {
+function createEmailDraft({ workbookBytes, vesselName = '', summary = {}, createdAt = new Date() }) {
+  const timestamp = new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}).format(createdAt);
   const boundary = `loading-checker-${crypto.randomUUID()}`;
-  const body = `Please find the marked loading list attached${vesselName ? ` for ${vesselName}` : ''}.\r\n\r\nTotal booked containers: ${summary.bookedTotal ?? ''}\r\nOn terminal: ${summary.onTerminal ?? ''}\r\nBlocked on terminal: ${summary.blockedCount ?? ''}\r\nNumbered containers outstanding: ${summary.outstanding ?? ''}\r\nAwaiting container numbers: ${summary.awaitingNumbers ?? ''}\r\n\r\nDeep red = blocked on terminal; green = delivered; amber = outstanding; grey = no containernumber.`;
+  const body = `Please find the marked loading list attached${vesselName ? ` for ${vesselName}` : ''}.\r\n\r\nTotal booked containers: ${summary.bookedTotal ?? ''}\r\nTotal TEU booked: ${summary.bookedTeu ?? 'Unavailable'}\r\nOn terminal: ${summary.onTerminal ?? ''}\r\nTotal TEU on terminal: ${summary.terminalTeu ?? 'Unavailable'}\r\nBlocked on terminal: ${summary.blockedCount ?? ''}\r\nContainers not terminal: ${summary.outstanding ?? ''}\r\nAwaiting container numbers: ${summary.awaitingNumbers ?? ''}\r\n\r\nDeep red = blocked on terminal; green = delivered; amber = outstanding; grey = no containernumber.`;
   return [
-    'X-Unsent: 1', 'MIME-Version: 1.0', `Date: ${new Date().toUTCString()}`,
-    `Subject: ${subjectHeader(`Terminal container overview${vesselName ? ` - ${vesselName}` : ''}`)}`,
+    'X-Unsent: 1', 'MIME-Version: 1.0', `Date: ${createdAt.toUTCString()}`,
+    `Subject: ${subjectHeader(`Terminal container overview${vesselName ? ` - ${vesselName}` : ''} - ${timestamp}`)}`,
     `Content-Type: multipart/mixed; boundary="${boundary}"`, '',
     `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '',
     wrappedBase64(new TextEncoder().encode(body)), '',
