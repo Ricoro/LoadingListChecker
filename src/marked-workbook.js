@@ -1,7 +1,7 @@
 const ExcelJS = require('exceljs');
 const { overview } = require('./overview');
 const { normalize } = require('./compare');
-const excludedHeaders = new Set(['sealno', 'pol', 'pod', 'blno', 'status', 'weight', 'tare', 'gross', 'imo', 'oceanvessel', 'oceancarrier', 'oceanblno', 'stock', 'forwardervatno', 'skkkfk']);
+const excludedHeaders = new Set(['sealno', 'pol', 'pod', 'blno', 'status', 'weight', 'tare', 'imo', 'oceanvessel', 'oceancarrier', 'oceanblno', 'stock', 'forwardervatno', 'skkkfk']);
 const normalizeHeader = value => String(value ?? '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
 function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedColumn = 4) {
   const workbook = new ExcelJS.Workbook();
@@ -35,6 +35,14 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedCol
     for (let col = 1; col <= width + 1; col++) row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
   });
   sheet.columns.forEach(column => { column.width = 18; });
+  const grossColumn = keptColumns.findIndex(column => normalizeHeader(headers[column]) === 'gross') + 1;
+  if (grossColumn > 0) {
+    const column = sheet.getColumn(grossColumn);
+    let length = 18;
+    column.eachCell(cell => { length = Math.max(length, String(cell.value ?? '').length + 2); });
+    column.width = length;
+    column.alignment = { horizontal: 'right', wrapText: true };
+  }
   const containerColumn = keptColumns.indexOf(selection.column) + 1;
   if (containerColumn > 0) sheet.getColumn(containerColumn).width = 22;
   sheet.getColumn(width + 1).width = 23;
