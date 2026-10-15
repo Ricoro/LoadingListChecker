@@ -1,0 +1,32 @@
+name: Validate testing portal
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/development'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm test
+      - run: npm run build:web
+        env:
+          PORTAL_ENVIRONMENT: testing
+          SHAREPOINT_HISTORY_ENABLED: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: testing-portal
+          path: dist/web
+          retention-days: 7

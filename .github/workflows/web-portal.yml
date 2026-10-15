@@ -1,14 +1,11 @@
-name: Publish browser demo
+name: Publish browser portal
 on:
   push:
     branches: [main]
-    paths:
-      - web/**
-      - src/**
-      - scripts/build-web.js
-      - package.json
-      - package-lock.json
-      - .github/workflows/web-portal.yml
+  workflow_run:
+    workflows: [Validate testing portal]
+    types: [completed]
+    branches: [development]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,37 +16,84 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Always build production from main, including when testing triggered this run.
       - uses: actions/checkout@v5
+        with:
+          ref: main
+          path: production
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: development
+          path: testing
+          persist-credentials: false
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
-      - name: Install dependencies
+          cache-dependency-path: |
+            production/package-lock.json
+            testing/package-lock.json
+      - name: Install production dependencies
+        working-directory: production
+        run: npm ci --no-audit --no-fund
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-        run: npm ci --no-audit --no-fund
-      - run: npm test
-      - run: npm run build:web
+      - name: Test production
+        working-directory: production
+        run: npm test
+      - name: Build production from main
+        working-directory: production
+        run: npm run build:web
         env:
+          PORTAL_ENVIRONMENT: production
           SHAREPOINT_HISTORY_ENABLED: ${{ vars.SHAREPOINT_HISTORY_ENABLED }}
           M365_TENANT_ID: ${{ vars.M365_TENANT_ID }}
           M365_CLIENT_ID: ${{ vars.M365_CLIENT_ID }}
           SHAREPOINT_SITE_URL: ${{ vars.SHAREPOINT_SITE_URL }}
           SHAREPOINT_HISTORY_FOLDER: ${{ vars.SHAREPOINT_HISTORY_FOLDER }}
           SHAREPOINT_DRIVE_ID: ${{ vars.SHAREPOINT_DRIVE_ID }}
+      - name: Install testing dependencies
+        working-directory: testing
+        run: npm ci --no-audit --no-fund
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Test development
+        working-directory: testing
+        run: npm test
+      - name: Build testing from development without shared storage
+        working-directory: testing
+        run: npm run build:web
+        env:
+          PORTAL_ENVIRONMENT: testing
+          SHAREPOINT_HISTORY_ENABLED: 'false'
+      - name: Assemble production and testing site
+        run: |
+          mkdir -p site/testing
+          cp -a production/dist/web/. site/
+          cp -a testing/dist/web/. site/testing/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/web
-      - name: Deploy browser demo
+          path: site
+      - name: Deploy browser portal
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Check published portal
+      - name: Check both published environments
         env:
           PORTAL_URL: ${{ steps.deployment.outputs.page_url }}
-        run: curl --fail --retry 5 --retry-delay 5 "$PORTAL_URL" -o /tmp/published-portal.html
+        run: |
+          curl --fail --retry 5 --retry-delay 5 "$PORTAL_URL" -o /tmp/production.html
+          curl --fail --retry 5 --retry-delay 5 "${PORTAL_URL}testing/" -o /tmp/testing.html
+          node - <<'JS'
+          const fs = require('node:fs');
+          const prod = fs.readFileSync('/tmp/production.html', 'utf8');
+          const test = fs.readFileSync('/tmp/testing.html', 'utf8');
+          if (prod.includes('id="testing-banner"') || !test.includes('id="testing-banner"')) throw new Error('Wrong environment deployed');
+          JS

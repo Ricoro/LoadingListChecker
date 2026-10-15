@@ -17,3 +17,7 @@ npm run build:web
 ```
 
 The browser output is `dist/web`. GitHub Actions publishes it to Pages. The Electron desktop application is also retained in the source repository.
+
+## Environments
+
+Use the [testing app](https://ricoro.github.io/LoadingListChecker/testing/) for changes under review. The standard link tracks approved changes on `main`. Future work defaults to `development`; publish to main only on an explicit release request. See [environment workflow and branch protection](docs/environments.md).
