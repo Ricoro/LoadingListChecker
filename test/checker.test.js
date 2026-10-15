@@ -40,7 +40,7 @@ test('mail draft contains a valid marked Excel attachment and cannot inject head
   assert.equal(workbook.worksheets[0].getCell('C2').value,'Delivered');
 });
 test('marked Excel removes unnecessary source columns while retaining aligned values and delivery status', async () => {
-  const removed=['Seal No','POL','POD','BL NO','Status','Weight (ton)','Tare','IMO','Ocean Vessel','Ocean carrier','OCean BL No','Stock','Forwarder VAT NO','SKK/KFK'];
+  const removed=['Seal No','POL','POD','BL NO','Status','Weight (ton)','Tare','IMO','Ocean Vessel','Ocean carrier','OCean BL No','Stock','Consignee','Forwarder','Forwarder VAT NO','SKK/KFK'];
   const headers=['Cont. No','Booking No',...removed,'Client','Terminal status'];
   const values=['MSCU1234567','BOOK1',...removed.map((_,i)=>`removed-${i}`),'Example client','Old status'];
   const sheet={rows:[headers,values,['','BOOK2',...removed.map(()=>''),'Other client','']]};
@@ -171,5 +171,6 @@ test('marked Excel retains the full Gross value and makes the column wide enough
   const book=new ExcelJS.Workbook();await book.xlsx.load(await markedWorkbook(source,{column:0,start:2},[],0,-1).xlsx.writeBuffer());
   const sheet=book.worksheets[0];assert.equal(sheet.getCell('C1').value,'Gross');
   assert.equal(sheet.getCell('C2').value,'123456789012345.678900');assert.equal(sheet.getCell('C3').value,'33.200');
-  assert.ok(sheet.getColumn(3).width >= 23);assert.equal(sheet.getCell('D2').value,'Outstanding');
+  assert.ok(sheet.getColumn(3).width >= 23);
+  sheet.eachRow(row => row.eachCell(cell => assert.equal(cell.alignment.horizontal,'left')));assert.equal(sheet.getCell('D2').value,'Outstanding');
 });
