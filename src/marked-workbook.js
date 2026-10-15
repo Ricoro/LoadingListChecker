@@ -1,7 +1,7 @@
 const ExcelJS = require('exceljs');
 const { overview } = require('./overview');
 const { normalize } = require('./compare');
-const excludedHeaders = new Set(['sealno', 'pol', 'pod', 'blno', 'status', 'weight', 'tare', 'imo', 'oceanvessel', 'oceancarrier', 'oceanblno', 'stock', 'forwardervatno', 'skkkfk']);
+const excludedHeaders = new Set(['sealno', 'pol', 'pod', 'blno', 'status', 'weight', 'tare', 'imo', 'oceanvessel', 'oceancarrier', 'oceanblno', 'stock', 'consignee', 'forwarder', 'forwardervatno', 'skkkfk']);
 const normalizeHeader = value => String(value ?? '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
 function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedColumn = 4) {
   const workbook = new ExcelJS.Workbook();
@@ -16,7 +16,17 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedCol
   const width = keptColumns.length;
   const headersBooking = headers.findIndex(value => /^booking/i.test(String(value).trim()));
   const exportedBookings = new Map();
-  vesselSheet.rows.forEach((values, index) => {
+  const sourceRows = vesselSheet.rows.map((values,index) => ({values,index}));
+  const bookingKey = row => String(row.values[headersBooking] ?? '').trim().toUpperCase();
+  const sortedRows = sourceRows.filter(row => statuses.has(row.index + 1));
+  if (headersBooking >= 0) sortedRows.sort((a,b) => {
+    const left = bookingKey(a), right = bookingKey(b);
+    if (!left || !right) return left ? -1 : right ? 1 : 0;
+    return left.localeCompare(right, 'en', {sensitivity:'base'});
+  });
+  let nextSortedRow = 0;
+  sourceRows.forEach(source => {
+    const {values,index} = statuses.has(source.index + 1) ? sortedRows[nextSortedRow++] : source;
     const status = statuses.get(index + 1);
     if (status && status !== 'No containernumber') {
       const container = normalize(values[selection.column]);
@@ -34,14 +44,14 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedCol
     const color = status === 'Blocked' ? 'FF8B1E2D' : status === 'Delivered' ? 'FFDDF1E4' : status === 'Outstanding' ? 'FFFFEDD3' : 'FFE8EBEF';
     for (let col = 1; col <= width + 1; col++) row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
   });
-  sheet.columns.forEach(column => { column.width = 18; });
+  sheet.columns.forEach(column => { column.width = 18; column.alignment = { horizontal: 'left' }; });
   const grossColumn = keptColumns.findIndex(column => normalizeHeader(headers[column]) === 'gross') + 1;
   if (grossColumn > 0) {
     const column = sheet.getColumn(grossColumn);
     let length = 18;
     column.eachCell(cell => { length = Math.max(length, String(cell.value ?? '').length + 2); });
     column.width = length;
-    column.alignment = { horizontal: 'right', wrapText: true };
+    column.alignment = { horizontal: 'left', wrapText: true };
   }
   const containerColumn = keptColumns.indexOf(selection.column) + 1;
   if (containerColumn > 0) sheet.getColumn(containerColumn).width = 22;
