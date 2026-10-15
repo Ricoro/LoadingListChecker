@@ -16,7 +16,17 @@ function markedWorkbook(vesselSheet, selection, quayRows, quayColumn, blockedCol
   const width = keptColumns.length;
   const headersBooking = headers.findIndex(value => /^booking/i.test(String(value).trim()));
   const exportedBookings = new Map();
-  vesselSheet.rows.forEach((values, index) => {
+  const sourceRows = vesselSheet.rows.map((values,index) => ({values,index}));
+  const bookingKey = row => String(row.values[headersBooking] ?? '').trim().toUpperCase();
+  const sortedRows = sourceRows.filter(row => statuses.has(row.index + 1));
+  if (headersBooking >= 0) sortedRows.sort((a,b) => {
+    const left = bookingKey(a), right = bookingKey(b);
+    if (!left || !right) return left ? -1 : right ? 1 : 0;
+    return left.localeCompare(right, 'en', {sensitivity:'base'});
+  });
+  let nextSortedRow = 0;
+  sourceRows.forEach(source => {
+    const {values,index} = statuses.has(source.index + 1) ? sortedRows[nextSortedRow++] : source;
     const status = statuses.get(index + 1);
     if (status && status !== 'No containernumber') {
       const container = normalize(values[selection.column]);

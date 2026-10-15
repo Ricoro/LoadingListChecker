@@ -174,3 +174,16 @@ test('marked Excel retains the full Gross value and makes the column wide enough
   assert.ok(sheet.getColumn(3).width >= 23);
   sheet.eachRow(row => row.eachCell(cell => assert.equal(cell.alignment.horizontal,'left')));assert.equal(sheet.getCell('D2').value,'Outstanding');
 });
+
+test('Excel sorts whole booking rows A to Z, preserves totals and styles, and puts missing bookings last', async () => {
+  const source={rows:[['Loading list'],['Cont. No','Booking No','Gross'],['MSCU1234567','Z002','33.200'],['ABCD7654321','A001','4.500'],['','a001','1.250'],['CMAU1234567','B003','9.000'],['MSCU1234567','Z002','33.200'],['ZZZZ1234567','','2.000'],['TOTAL units: 5']]};
+  const original=JSON.stringify(source);
+  const book=new ExcelJS.Workbook();await book.xlsx.load(await markedWorkbook(source,{column:0,start:3},[['MSCU1234567','Yes'],['ABCD7654321','No']],0,1).xlsx.writeBuffer());
+  const sheet=book.worksheets[0];
+  assert.equal(sheet.getCell('A1').value,'Loading list');assert.equal(sheet.getCell('B2').value,'Booking No');
+  assert.deepEqual([3,4,5,6,7].map(r=>sheet.getCell('B'+r).value),['A001','a001','B003','Z002','']);
+  assert.equal(sheet.getCell('A3').value,'ABCD7654321');assert.equal(sheet.getCell('C3').value,'4.500');assert.equal(sheet.getCell('D3').value,'Delivered');
+  assert.equal(sheet.getCell('D4').value,'No containernumber');
+  assert.equal(sheet.getCell('A6').value,'MSCU1234567');assert.equal(sheet.getCell('D6').value,'Blocked');assert.equal(sheet.getCell('A6').fill.fgColor.argb,'FF8B1E2D');
+  assert.equal(sheet.getCell('A8').value,'TOTAL units: 5');assert.equal(JSON.stringify(source),original);
+});
