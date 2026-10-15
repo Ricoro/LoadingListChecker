@@ -35,8 +35,8 @@ test('mail draft contains a valid marked Excel attachment and cannot inject head
   assert.match(subject,/15\/10\/2026, 14:34 CEST/);
   const body = Buffer.from(eml.split('Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n')[1].split('\r\n\r\n')[0].replace(/\r\n/g,''),'base64').toString('utf8');
   assert.match(body,/Total booked containers: 1\r\nTotal TEU booked: 2/);
-  assert.match(body,/On terminal: 1\r\nTotal TEU on terminal: 2/);
-  assert.match(body,/Containers not terminal: 0/);assert.ok(!body.includes('Numbered containers outstanding'));
+  assert.match(body,/Containers on terminal: 1\r\nTotal TEU on terminal: 2/);
+  assert.match(body,/Containers not on terminal: 0/);assert.ok(!body.includes('Numbered containers outstanding'));
 
   assert.ok(!eml.includes('\r\nBcc:'));
   assert.match(eml,/filename="marked-loading-list.xlsx"/);
