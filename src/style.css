@@ -8,7 +8,7 @@
 .configuration select{min-width:0;max-width:100%}
 .preview table{width:max-content;min-width:100%}
 .summary{grid-template-columns:repeat(5,minmax(0,1fr))}
-#count-warning:not(:empty),#booking-warning:not(:empty){padding:12px 16px;background:#fff1df;border:1px solid #edc38b;border-radius:8px;color:#865217}
+#booking-warning:not(:empty){padding:12px 16px;background:#fff1df;border:1px solid #edc38b;border-radius:8px;color:#865217}
 @media(max-width:1000px){.imports{grid-template-columns:minmax(0,1fr)}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.local{position:static;display:inline-block}.action{flex-wrap:wrap}main{padding:24px}}
 
 .update-banner{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:16px 28px;background:#e1f2ef;border-bottom:1px solid #9bbfb8;color:#204d49;box-shadow:0 3px 12px #20324618}.update-banner>div{flex:1;min-width:0}.update-banner p{margin:4px 0;color:inherit;font-size:13px}.update-banner progress{width:min(400px,100%);height:10px}.update-banner button{flex-shrink:0}#update-settings{margin-top:18px}#update-settings summary{cursor:pointer;color:#176d76;font-weight:600;display:list-item}.update-settings-content{margin-top:12px;background:white;border:1px solid #dfe6ec;border-radius:8px;padding:16px;max-width:680px}.update-settings-content label{display:block;margin-bottom:6px;font-weight:600}.update-settings-content input{width:100%}.update-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}#update-settings-message{color:#865217;font-size:12px}@media(max-width:700px){.update-banner{flex-wrap:wrap;padding:12px}.update-banner>div{flex-basis:100%}}
@@ -17,7 +17,7 @@
 
 #booking-warning{font-size:12px}
 
-#count-warning:not(:empty),#booking-warning:not(:empty),#teu-warning:not(:empty){padding:12px 16px;background:#fff0f0;border:1px solid #e6aaaa;border-radius:8px;color:#a51d2d}
+#booking-warning:not(:empty),#teu-warning:not(:empty){padding:12px 16px;background:#fff0f0;border:1px solid #e6aaaa;border-radius:8px;color:#a51d2d}
 #teu-warning{font-size:12px}#message{color:#a51d2d}
 .teu-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
 .import-settings{margin-top:12px}.import-settings summary{cursor:pointer;font-weight:600;color:#176d76;padding:8px 0}.import-settings summary:focus-visible{outline:3px solid #79bfc7;outline-offset:2px}

@@ -57,7 +57,6 @@ function showResult(result) { state.result = result;
     $('booked-teu').textContent = result.bookedTeu ?? 'Unavailable';
     $('terminal-teu').textContent = result.terminalTeu ?? 'Unavailable';
     $('teu-warning').textContent = result.bookedTeu == null || result.terminalTeu == null ? 'TEU total unavailable: check the container sizes or the loading-list TEU total. 20 ft = 1 TEU; 40/45 ft = 2 TEU.' : '';
-    $('count-warning').textContent = result.declaredTotal != null && result.declaredTotal !== result.countedContainers ? `Total mismatch: the sheet states ${result.declaredTotal} containers; the list has ${result.numberedContainers} distinct numbered containers and ${result.blankBookingRows ?? result.missingNumbers} booking rows awaiting numbers${result.invalidNumbers ? ', plus '+result.invalidNumbers+' invalid-number rows' : ''}. Repeated container numbers on different bills of lading count once. Please check the loading list.` : '';
      const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
     $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
     $('delivered').textContent = delivered;
