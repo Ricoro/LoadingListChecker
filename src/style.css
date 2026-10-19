@@ -55,3 +55,5 @@
 @media(max-width:1000px){.header-actions{position:static;flex-direction:row;flex-wrap:wrap;align-items:center;margin-top:16px}}
 :root[data-theme=dark] input::placeholder{color:#b5c4d2;opacity:1}
 :root[data-theme=dark] #rows tr.no-containernumber .badge{background:#39495b;color:#d4dfec}
+
+.copyright{margin-top:32px;text-align:center;color:#677785}.copyright small{font-size:10px}:root[data-theme=dark] .copyright{color:#a3b3c3}
