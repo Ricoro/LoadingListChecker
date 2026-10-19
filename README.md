@@ -6,7 +6,7 @@ Import the vessel loading list and terminal list, then compare container numbers
 
 **Save as Excel** downloads the shortened marked loading list. **Mail** downloads an Outlook draft with that Excel attached; add recipients and send in Outlook.
 
-Shared, timestamped comparisons use Microsoft 365 sign-in and a private SharePoint folder. Until the organisation completes the [Microsoft setup](docs/sharepoint-setup.md), comparisons remain local and shared history is unavailable. No customer spreadsheets are included in the portal.
+Import your lists directly from your computer. Comparisons run locally in your browser, with no sign-in or shared history required. Use **Save as Excel** or **Mail** to keep or send the results.
 
 ## Development
 
