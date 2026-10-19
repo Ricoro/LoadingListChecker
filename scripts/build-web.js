@@ -17,12 +17,13 @@ async function build() {
   if (testing) {
     html = html.replace('<title>Loading List Checker</title>', '<title>Testing · Loading List Checker</title>').replace('</head>', '<meta name="robots" content="noindex,nofollow"></head>').replace('<body>', '<body><aside id="testing-banner" role="note">TESTING ENVIRONMENT · Changes here are for review. The standard app stays on the approved version.</aside>');
   }
-  html = html.replace('VESSEL OPERATIONS', 'VESSEL OPERATIONS · BROWSER APP');
   html = html.replace('</header>', '<section class="portal-intro"><p>Use this page independently on any PC with a modern browser. Files are compared in your browser. Your files stay on this computer. Use Save as Excel or Mail to keep or share the results.</p></section></header>');
   html = html.replace('<button id="export-marked">Save as Excel</button>', '<button id="export-marked">Save as Excel</button><button id="email-marked" title="Download an Outlook email draft with the marked Excel attached">Mail</button>');
   html = html.replace('<main>', '<main><section id="shared-history" class="portal-intro" hidden></section>');
   html = html.replace('<script src="renderer.js"></script>', `<script src="${path.basename(script)}"></script>`);
   await fs.writeFile(path.join(output, 'index.html'), html);
+  await fs.copyFile('src/theme.js', path.join(output, 'theme.js'));
+  await fs.cp('src/assets', path.join(output, 'assets'), {recursive:true});
   await fs.writeFile(path.join(output, 'style.css'), (await fs.readFile('src/style.css', 'utf8')) + '\n#testing-banner{padding:14px 24px;background:#fff1cf;color:#704b00;border-bottom:2px solid #d9a441;font-weight:600;text-align:center}\n.portal-intro{margin-top:22px;padding:16px 20px;background:#edf4f6;border:1px solid #d3e2e8;border-radius:10px}.portal-intro p{margin:0 0 12px}\n');
   await fs.writeFile(path.join(output, 'auth.html'), '<!doctype html><html><head><meta charset="utf-8"><title>Microsoft sign-in</title></head><body></body></html>');
   await fs.writeFile(path.join(output, '.nojekyll'), '');
