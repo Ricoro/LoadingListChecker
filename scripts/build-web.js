@@ -17,7 +17,6 @@ async function build() {
   if (testing) {
     html = html.replace('<title>Loading List Checker</title>', '<title>Testing · Loading List Checker</title>').replace('</head>', '<meta name="robots" content="noindex,nofollow"></head>').replace('<body>', '<body><aside id="testing-banner" role="note">TESTING ENVIRONMENT · Changes here are for review. The standard app stays on the approved version.</aside>');
   }
-  html = html.replace('VESSEL OPERATIONS', 'VESSEL OPERATIONS · BROWSER APP');
   html = html.replace('</header>', '<section class="portal-intro"><p>Use this page independently on any PC with a modern browser. Files are compared in your browser. Your files stay on this computer. Use Save as Excel or Mail to keep or share the results.</p></section></header>');
   html = html.replace('<button id="export-marked">Save as Excel</button>', '<button id="export-marked">Save as Excel</button><button id="email-marked" title="Download an Outlook email draft with the marked Excel attached">Mail</button>');
   html = html.replace('<main>', '<main><section id="shared-history" class="portal-intro" hidden></section>');
