@@ -23,6 +23,7 @@ async function build() {
   html = html.replace('<main>', '<main><section id="shared-history" class="portal-intro" hidden></section>');
   html = html.replace('<script src="renderer.js"></script>', `<script src="${path.basename(script)}"></script>`);
   await fs.writeFile(path.join(output, 'index.html'), html);
+  await fs.copyFile('src/theme.js', path.join(output, 'theme.js'));
   await fs.writeFile(path.join(output, 'style.css'), (await fs.readFile('src/style.css', 'utf8')) + '\n#testing-banner{padding:14px 24px;background:#fff1cf;color:#704b00;border-bottom:2px solid #d9a441;font-weight:600;text-align:center}\n.portal-intro{margin-top:22px;padding:16px 20px;background:#edf4f6;border:1px solid #d3e2e8;border-radius:10px}.portal-intro p{margin:0 0 12px}\n');
   await fs.writeFile(path.join(output, 'auth.html'), '<!doctype html><html><head><meta charset="utf-8"><title>Microsoft sign-in</title></head><body></body></html>');
   await fs.writeFile(path.join(output, '.nojekyll'), '');
