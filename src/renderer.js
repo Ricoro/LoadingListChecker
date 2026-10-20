@@ -56,7 +56,7 @@ function showResult(result) { state.result = result;
     $('awaiting').textContent = (result.bookedTotal ?? result.results.length) - (result.numberedContainers ?? result.results.length);
     $('booked-teu').textContent = result.bookedTeu ?? 'Unavailable';
     $('terminal-teu').textContent = result.terminalTeu ?? 'Unavailable';
-    $('teu-warning').textContent = result.bookedTeu == null || result.terminalTeu == null ? 'TEU total unavailable: check the container sizes or the loading-list TEU total. 20 ft = 1 TEU; 40/45 ft = 2 TEU.' : '';
+    $('teu-warning').textContent = result.bookedTeu == null || result.terminalTeu == null ? 'TEU total unavailable: check the container sizes or the loading-list TEU total. 20 ft = 1 TEU; 23 ft = 3 TEU; 40/45 ft = 2 TEU.' : '';
      const delivered = result.results.filter(r=>r.status==='Delivered' || r.status==='Blocked').length;
     $('blocked').textContent = result.blockedCount ?? result.results.filter(r=>r.status==='Blocked').length;
     $('delivered').textContent = delivered;
