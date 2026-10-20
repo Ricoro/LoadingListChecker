@@ -1,8 +1,8 @@
 const { normalize, extract } = require('./compare');
 const { blockedContainers } = require('./terminal');
 function teuForSize(value) {
-  const length = String(value ?? '').match(/(?:^|[^0-9])(20|40|45)(?=[^0-9]|$)/)?.[1];
-  return length === '20' ? 1 : length ? 2 : null;
+  const length = String(value ?? '').match(/(?:^|[^0-9])(20|23|40|45)(?=[^0-9]|$)/)?.[1];
+  return length === '20' ? 1 : length === '23' ? 3 : length ? 2 : null;
 }
 function overview(sheet, selection, quayRows, quayColumn, blockedColumn = 4) {
   const blocked = blockedContainers(quayRows, quayColumn, blockedColumn);
@@ -41,7 +41,10 @@ function overview(sheet, selection, quayRows, quayColumn, blockedColumn = 4) {
     if (!uniqueRows.has(row.container) || teuForSize(uniqueRows.get(row.container).size) == null) uniqueRows.set(row.container, row);
   }
   const sumTeu = items => items.some(row => teuForSize(row.size) == null) ? null : items.reduce((total,row) => total + teuForSize(row.size), 0);
-  const bookedTeu = declaredTeu ?? sumTeu([...uniqueRows.values(), ...rows.filter(row => row.status === 'No containernumber')]);
+  const bookedRows = [...uniqueRows.values(), ...rows.filter(row => row.status === 'No containernumber')];
+  // Lapro includes 23 ft units as 1 TEU; the line's requested rule is 3 TEU.
+  const extra23Teu = bookedRows.filter(row => teuForSize(row.size) === 3).length * 2;
+  const bookedTeu = declaredTeu == null ? sumTeu(bookedRows) : declaredTeu + extra23Teu;
   const terminalTeu = sumTeu([...uniqueRows.values()].filter(row => ['Delivered','Blocked'].includes(row.status)));
   return { bookedTeu, terminalTeu, blankBookingRows, bookingConflicts, numberedContainers, countedContainers, additionalBillRows, bookedTotal, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'No containernumber').length };
 }

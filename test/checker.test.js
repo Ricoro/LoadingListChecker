@@ -194,3 +194,13 @@ test('Excel sorts whole booking rows A to Z, preserves totals and styles, and pu
   assert.equal(sheet.getCell('A6').value,'MSCU1234567');assert.equal(sheet.getCell('D6').value,'Blocked');assert.equal(sheet.getCell('A6').fill.fgColor.argb,'FF8B1E2D');
   assert.equal(sheet.getCell('A8').value,'TOTAL units: 5');assert.equal(JSON.stringify(source),original);
 });
+
+test('23 ft counts as 3 TEU in booked and terminal totals without counting split bills twice', () => {
+  const rows=[['Size','','Cont. No','Booking No'],["20'",'','MSCU1234567','A'],['',"23'",'CEXU3503017','B'],['',"23'",'CEXU3503017','C'],["40'",'','ABCD7654321','D'],['',"23'",'','E']];
+  const quay=[['MSCU1234567','No'],['CEXU3503017','Yes']];
+  const data=overview({rows:[...rows,['TOTAL units: 4 TOTAL TEUs: 5']]},{column:2,start:2},quay,0,1);
+  assert.equal(data.terminalTeu,4);
+  assert.equal(data.bookedTeu,9);
+  assert.equal(data.numberedContainers,3);
+  assert.equal(overview({rows},{column:2,start:2},quay,0,1).bookedTeu,9);
+});
