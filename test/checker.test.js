@@ -204,3 +204,11 @@ test('23 ft counts as 3 TEU in booked and terminal totals without counting split
   assert.equal(data.numberedContainers,3);
   assert.equal(overview({rows},{column:2,start:2},quay,0,1).bookedTeu,9);
 });
+
+test('blocked TEU counts unique vessel containers and excludes delivered, outstanding and unrelated containers', () => {
+  const sheet={rows:[['Size','Cont. No','Booking No'],['20','MSCU1234567','A'],['20','MSCU1234567','B'],['23','CEXU3503017','C'],['40','ABCD7654321','D'],['45','CMAU1234567','E'],['40','ZZZZ1234567','F']]};
+  const quay=[['MSCU1234567','Yes'],['CEXU3503017','Yes'],['ABCD7654321','Yes'],['CMAU1234567','No'],['OTHR1234567','Yes']];
+  assert.equal(overview(sheet,{column:1,start:2},quay,0,1).blockedTeu,6);
+  assert.equal(overview(sheet,{column:1,start:2},[],0,1).blockedTeu,0);
+  assert.equal(overview({rows:[sheet.rows[0],['','MSCU1234567','A']]},{column:1,start:2},quay,0,1).blockedTeu,null);
+});

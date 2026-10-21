@@ -46,6 +46,7 @@ function overview(sheet, selection, quayRows, quayColumn, blockedColumn = 4) {
   const extra23Teu = bookedRows.filter(row => teuForSize(row.size) === 3).length * 2;
   const bookedTeu = declaredTeu == null ? sumTeu(bookedRows) : declaredTeu + extra23Teu;
   const terminalTeu = sumTeu([...uniqueRows.values()].filter(row => ['Delivered','Blocked'].includes(row.status)));
-  return { bookedTeu, terminalTeu, blankBookingRows, bookingConflicts, numberedContainers, countedContainers, additionalBillRows, bookedTotal, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'No containernumber').length };
+  const blockedTeu = sumTeu([...uniqueRows.values()].filter(row => row.status === 'Blocked'));
+  return { bookedTeu, terminalTeu, blockedTeu, blankBookingRows, bookingConflicts, numberedContainers, countedContainers, additionalBillRows, bookedTotal, declaredTotal, countedBookingRows: rows.length, numberedRows, awaitingNumbers, invalidNumbers, loadingRows: rows, vesselName: vesselLine?.find(value => /^M\/V\s/i.test(String(value))) || '', missingNumbers: rows.filter(row => row.status === 'No containernumber').length };
 }
 module.exports = { overview };
